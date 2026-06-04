@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseInput, buildJsonUrl, normalizeListing, unescapeHtml } from '../src/reddit.js';
+import { parseInput, buildJsonUrl, normalizeListing, unescapeHtml, singleMediaItem } from '../src/reddit.js';
 
 describe('unescapeHtml', () => {
   it('decodes the entities reddit emits', () => {
@@ -9,6 +9,32 @@ describe('unescapeHtml', () => {
   it('does not double-unescape (&amp;lt; -> &lt;, not <)', () => {
     expect(unescapeHtml('a&amp;lt;b')).toBe('a&lt;b');
     expect(unescapeHtml('q=1&amp;amp;r=2')).toBe('q=1&amp;r=2');
+  });
+});
+
+describe('parseInput — media share link', () => {
+  it('parses reddit.com/media?url=<i.redd.it> into a media descriptor', () => {
+    const u = 'https://www.reddit.com/media?url=' + encodeURIComponent('https://i.redd.it/abc123.jpeg');
+    expect(parseInput(u)).toMatchObject({ ok: true, kind: 'media', url: 'https://i.redd.it/abc123.jpeg' });
+  });
+  it('rejects a media wrapper pointing at a non-allowlisted host', () => {
+    const u = 'https://www.reddit.com/media?url=' + encodeURIComponent('https://evil.example/x.jpg');
+    expect(parseInput(u).ok).toBe(false);
+  });
+});
+
+describe('singleMediaItem', () => {
+  it('builds a normalized image item from an i.redd.it URL', () => {
+    const it = singleMediaItem('https://i.redd.it/abc123.jpeg');
+    expect(it).toMatchObject({ type: 'image', url: 'https://i.redd.it/abc123.jpeg', host: 'i.redd.it', ext: 'jpeg' });
+    expect(it.thumbnail).toBe('https://i.redd.it/abc123.jpeg');
+  });
+  it('classifies video and gif, and drops video thumbnails', () => {
+    expect(singleMediaItem('https://i.redd.it/v.mp4')).toMatchObject({ type: 'video', thumbnail: undefined });
+    expect(singleMediaItem('https://i.redd.it/g.gif')).toMatchObject({ type: 'gif' });
+  });
+  it('returns null for a non-allowlisted host', () => {
+    expect(singleMediaItem('https://evil.example/x.jpg')).toBeNull();
   });
 });
 

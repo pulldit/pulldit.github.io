@@ -2,7 +2,7 @@
 // textContent (never innerHTML with data), matching the strict CSP. No inline handlers.
 
 import { APP, LIMITS, DEFAULT_PUBLIC_ID } from './config.js';
-import { parseInput, buildJsonUrl, normalizeListing } from './reddit.js';
+import { parseInput, buildJsonUrl, normalizeListing, singleMediaItem } from './reddit.js';
 import { fetchJson, canZip, resolveProxy, getPublicProxy, ProxyMode } from './proxy.js';
 import { detectExtension } from './bridge-client.js';
 import { downloadSingle, downloadZip } from './download.js';
@@ -301,6 +301,21 @@ function setStatus(message, kind = '') {
   el.className = 'status' + (kind ? ' ' + kind : '');
 }
 
+/**
+ * Build the post-fetch status message. If items were found but the active type/source filters
+ * hide all of them, say so explicitly (otherwise an empty grid looks like a failure).
+ * @param {number} found total normalized items (pre-filter)
+ */
+function reportFound(found) {
+  if (found === 0) return 'No downloadable media found in this listing.';
+  const shown = keptItems().length;
+  if (shown === 0) {
+    return `Found ${found} item${found === 1 ? '' : 's'}, but your filters hide ${found === 1 ? 'it' : 'them all'} — ` +
+      'enable the “Show types” / “Sources” chips above.';
+  }
+  return `Found ${found} media item${found === 1 ? '' : 's'}.`;
+}
+
 /* ----------------------------- fetching ----------------------------- */
 
 async function onSearch(event) {
@@ -310,6 +325,24 @@ async function onSearch(event) {
   const parsed = parseInput($('query').value);
   if (!parsed.ok) {
     setStatus('Could not understand that input: ' + parsed.reason, 'error');
+    return;
+  }
+
+  // A direct media link (reddit.com/media?url=… or a pasted i.redd.it/imgur URL): no listing
+  // fetch — build the single item and render it straight away.
+  if (parsed.kind === 'media') {
+    const item = singleMediaItem(parsed.url);
+    if (!item) {
+      setStatus('That media link is not a supported Reddit/imgur file.', 'error');
+      return;
+    }
+    allItems = [item];
+    selected.clear();
+    discarded.clear();
+    showDiscarded = false;
+    refreshView();
+    addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: 1 });
+    setStatus(reportFound(1), keptItems().length ? 'ok' : 'error');
     return;
   }
 
@@ -335,11 +368,7 @@ async function onSearch(event) {
     recordFetchStats({ status: 'success', elapsedMs, bytes: meta.bytes, ...stats });
     refreshView();
     addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: items.length });
-    if (items.length === 0) {
-      setStatus('No downloadable media found in this listing.', '');
-    } else {
-      setStatus(`Found ${items.length} media item${items.length === 1 ? '' : 's'}.`, 'ok');
-    }
+    setStatus(reportFound(items.length), items.length === 0 ? '' : (keptItems().length ? 'ok' : 'error'));
   } catch (err) {
     const elapsedMs = perf() - t0;
     const reason = classifyError(err?.message || err);

@@ -66,6 +66,14 @@ export function parseInput(raw) {
   const params = new URLSearchParams(search);
   const time = params.get('t') || undefined;
 
+  // /media?url=<encoded media URL> — Reddit's share wrapper for a single hosted file.
+  if (seg[0] === 'media') {
+    const inner = params.get('url');
+    const v = inner ? validateMediaUrl(inner) : { ok: false };
+    if (v.ok) return { ok: true, kind: 'media', url: v.url, label: 'media file' };
+    return { ok: false, reason: 'unsupported media link' };
+  }
+
   // /comments/{id} or /r/{sub}/comments/{id}/...
   const ci = seg.indexOf('comments');
   if (ci !== -1 && POSTID_RE.test(seg[ci + 1] || '')) {
@@ -95,6 +103,29 @@ export function parseInput(raw) {
   }
 
   return { ok: false, reason: 'could not recognize a post, subreddit or user' };
+}
+
+/**
+ * Build a single normalized MediaItem from a direct media URL (e.g. a `reddit.com/media?url=…`
+ * share link or a pasted i.redd.it/imgur URL). Returns null if the URL is not allowlisted media.
+ * @param {string} rawUrl
+ */
+export function singleMediaItem(rawUrl) {
+  const v = validateMediaUrl(rawUrl);
+  if (!v.ok) return null;
+  const isVideo = /\.(mp4|webm|mov)$/i.test(v.url);
+  const isGif = /\.gif$/i.test(v.url);
+  const name = (parseHttpUrl(v.url)?.pathname || '').split('/').filter(Boolean).pop() || 'media';
+  return {
+    id: `media-${name}`,
+    type: isVideo ? 'video' : isGif ? 'gif' : 'image',
+    url: v.url,
+    host: v.host,
+    ext: extFromUrl(v.url, isVideo ? 'mp4' : 'jpg'),
+    title: name,
+    nsfw: false,
+    thumbnail: isVideo ? undefined : v.url,
+  };
 }
 
 /**
