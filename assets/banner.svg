@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-label="Pulldit — download Reddit media in your browser">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0c0f14"/>
+      <stop offset="1" stop-color="#121822"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.42" cy="-0.1" r="0.7">
+      <stop offset="0" stop-color="#ff5414" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#ff5414" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff5414"/>
+      <stop offset="0.55" stop-color="#ff8c1a"/>
+      <stop offset="1" stop-color="#ffd08a"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#ffe7d4"/>
+    </linearGradient>
+    <linearGradient id="wm" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#ff7a1a"/>
+      <stop offset="1" stop-color="#ffae5c"/>
+    </linearGradient>
+  </defs>
+
+  <!-- background -->
+  <rect width="1200" height="600" fill="url(#bg)"/>
+  <rect width="1200" height="600" fill="url(#glow)"/>
+
+  <!-- faint media-grid motif (decorative, far right) -->
+  <!-- 9-tile media-grid motif, kept in the upper-right so no text overlaps it -->
+  <g opacity="0.08" fill="#ffffff">
+    <rect x="930" y="78" width="66" height="66" rx="10"/>
+    <rect x="1008" y="78" width="66" height="66" rx="10"/>
+    <rect x="1086" y="78" width="66" height="66" rx="10"/>
+    <rect x="930" y="156" width="66" height="66" rx="10"/>
+    <rect x="1008" y="156" width="66" height="66" rx="10"/>
+    <rect x="1086" y="156" width="66" height="66" rx="10"/>
+    <rect x="930" y="234" width="66" height="66" rx="10"/>
+    <rect x="1008" y="234" width="66" height="66" rx="10"/>
+    <rect x="1086" y="234" width="66" height="66" rx="10"/>
+  </g>
+  <!-- a download arrow living inside the centre tile -->
+  <g opacity="0.16" fill="#ff8c1a">
+    <rect x="1036" y="171" width="10" height="15" rx="2.5"/>
+    <polygon points="1027,183 1055,183 1041,201"/>
+    <rect x="1029" y="205" width="24" height="5" rx="2.5"/>
+  </g>
+
+  <!-- hexagon badge (regular flat-top hexagon: 2s wide, s*sqrt3 tall) -->
+  <polygon points="155,196 275,196 335,300 275,404 155,404 95,300"
+           fill="#141b24" stroke="url(#ring)" stroke-width="7" stroke-linejoin="round"/>
+  <g transform="translate(119,198) scale(3)" fill="url(#arrow)">
+    <rect x="27" y="13" width="10" height="18" rx="2.5"/>
+    <path d="M16.5 27 H47.5 a1.6 1.6 0 0 1 1.2 2.65 L33.4 46.6 a2 2 0 0 1 -2.8 0 L15.3 29.65 A1.6 1.6 0 0 1 16.5 27 Z"/>
+    <rect x="16" y="49" width="32" height="6" rx="3"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="418" y="300" font-family="ui-monospace, 'DejaVu Sans Mono', 'Liberation Mono', Consolas, monospace" font-size="118" font-weight="700" fill="#f3f4f6">Pull<tspan fill="url(#wm)">dit</tspan></text>
+
+  <!-- tagline with accent dash -->
+  <rect x="420" y="338" width="38" height="6" rx="3" fill="#ff7a1a"/>
+  <text x="474" y="349" font-family="ui-monospace, 'DejaVu Sans Mono', 'Liberation Mono', Consolas, monospace" font-size="27" fill="#9aa7b4">download reddit media in your browser</text>
+
+  <!-- feature line -->
+  <text x="420" y="400" font-family="ui-monospace, 'DejaVu Sans Mono', 'Liberation Mono', Consolas, monospace" font-size="26" fill="#6f7b8a">Images · GIFs · Videos · Galleries · ZIP</text>
+
+  <!-- footer -->
+  <line x1="60" y1="512" x2="1140" y2="512" stroke="#232c38" stroke-width="2"/>
+  <text x="60" y="556" font-family="ui-monospace, 'DejaVu Sans Mono', 'Liberation Mono', Consolas, monospace" font-size="24" fill="#6f7b8a">pulldit.github.io</text>
+  <text x="1140" y="556" text-anchor="end" font-family="ui-monospace, 'DejaVu Sans Mono', 'Liberation Mono', Consolas, monospace" font-size="24" fill="#6f7b8a">static · no backend · no tracking</text>
+</svg>
