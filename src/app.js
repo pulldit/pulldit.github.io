@@ -16,6 +16,8 @@ const SETTINGS_KEY = 'rd.settings.v1';
 const FILTERS_KEY = 'rd.filters.v1';
 const OPTIONS_KEY = 'rd.options.v1';
 const STATS_KEY = 'rd.stats.v1';
+const UI_KEY = 'rd.ui.v1';
+const COLLAPSIBLE_IDS = ['proxy-panel', 'fetch-stats-panel', 'download-stats-panel', 'history-panel'];
 const perf = () => (globalThis.performance && typeof performance.now === 'function' ? performance.now() : 0);
 
 /** @type {Array<object>} full normalized set from the last fetch */
@@ -145,6 +147,37 @@ function saveStatsPatch(patch) {
     localStorage.setItem(STATS_KEY, JSON.stringify({ ...loadSavedStats(), ...patch }));
   } catch {
     /* non-fatal */
+  }
+}
+
+/* ----------------------------- collapsible panel state ----------------------------- */
+
+function loadUiState() {
+  try {
+    return JSON.parse(localStorage.getItem(UI_KEY) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveUiState() {
+  const state = {};
+  for (const id of COLLAPSIBLE_IDS) {
+    const el = $(id);
+    if (el) state[id] = el.open;
+  }
+  try {
+    localStorage.setItem(UI_KEY, JSON.stringify(state));
+  } catch {
+    /* non-fatal */
+  }
+}
+
+function applyUiState() {
+  const state = loadUiState();
+  for (const id of COLLAPSIBLE_IDS) {
+    const el = $(id);
+    if (el && typeof state[id] === 'boolean') el.open = state[id];
   }
 }
 
@@ -332,13 +365,8 @@ function handleFetchError(err) {
 
 /* ----------------------------- statistics rendering ----------------------------- */
 
-function buildStatGrid(container, title, entries) {
+function buildStatCells(container, entries) {
   container.replaceChildren();
-  const heading = document.createElement('div');
-  heading.className = 'statsbox-title';
-  heading.textContent = title;
-  container.appendChild(heading);
-
   const grid = document.createElement('div');
   grid.className = 'stat-grid';
   for (const e of entries) {
@@ -357,16 +385,21 @@ function buildStatGrid(container, title, entries) {
   container.appendChild(grid);
 }
 
+function setBadge(id, text, kind) {
+  const el = $(id);
+  el.textContent = text;
+  el.className = 'badge' + (kind ? ' ' + kind : '');
+}
+
 function renderFetchStatsIdle() {
-  buildStatGrid($('fetch-stats'), 'Fetch statistics', [
+  setBadge('fetch-stats-badge', 'Idle', '');
+  buildStatCells($('fetch-stats'), [
     { label: 'Status', value: 'Idle' },
     { label: 'Tip', value: 'Run a fetch — statistics will appear here.', wide: true },
   ]);
 }
 
 function renderFetchStats(s) {
-  const box = $('fetch-stats');
-  box.hidden = false;
   const entries = [];
   if (s.status === 'success') entries.push({ label: 'Status', value: 'Success', kind: 'good' });
   else if (s.status === 'timeout') entries.push({ label: 'Status', value: 'Timeout', kind: 'bad' });
@@ -391,21 +424,25 @@ function renderFetchStats(s) {
   } else if (s.error) {
     entries.push({ label: 'Error', value: s.error, wide: true });
   }
-  buildStatGrid(box, 'Fetch statistics', entries);
+  if (s.status === 'success') setBadge('fetch-stats-badge', `${s.found ?? 0} found`, 'good');
+  else if (s.status === 'timeout') setBadge('fetch-stats-badge', 'Timeout', 'bad');
+  else setBadge('fetch-stats-badge', 'Failed', 'bad');
+  buildStatCells($('fetch-stats'), entries);
   saveStatsPatch({ fetch: s });
 }
 
 function renderDownloadStats(a, opts = {}) {
+  $('download-stats-panel').hidden = false;
   const box = $('download-stats');
-  box.hidden = false;
   const entries = [];
   if (opts.live) {
+    setBadge('download-stats-badge', `${a.processed}/${a.total}`, '');
     entries.push({ label: 'Progress', value: `${a.processed} / ${a.total}` });
     entries.push({ label: 'Succeeded', value: String(a.success), kind: 'good' });
     if (a.failed) entries.push({ label: 'Failed', value: String(a.failed), kind: 'bad' });
     entries.push({ label: 'Downloaded', value: formatBytes(a.totalBytes), kind: 'accent' });
     entries.push({ label: 'Speed', value: formatSpeed(a.avgSpeed) });
-    buildStatGrid(box, 'Downloading…', entries);
+    buildStatCells(box, entries);
     return;
   }
   entries.push({ label: 'Total', value: String(a.total) });
@@ -419,7 +456,8 @@ function renderDownloadStats(a, opts = {}) {
   for (const reason of Object.keys(a.byReason)) {
     if (a.byReason[reason] > 0) entries.push({ label: reason, value: String(a.byReason[reason]), kind: 'bad' });
   }
-  buildStatGrid(box, 'Download statistics', entries);
+  setBadge('download-stats-badge', `${a.success}/${a.total}`, a.failed ? 'warn' : 'good');
+  buildStatCells(box, entries);
   saveStatsPatch({ download: { a, elapsedMs: opts.elapsedMs } });
 }
 
@@ -743,6 +781,11 @@ function init() {
     renderDownloadStats(savedStats.download.a, { elapsedMs: savedStats.download.elapsedMs });
   }
   renderHistory();
+  applyUiState();
+  for (const id of COLLAPSIBLE_IDS) {
+    const el = $(id);
+    if (el) el.addEventListener('toggle', saveUiState);
+  }
   $('clear-history').addEventListener('click', clearHistory);
   syncProxyUi();
 }

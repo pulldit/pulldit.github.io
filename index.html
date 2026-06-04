@@ -112,7 +112,7 @@
       <p class="hint">Filters apply to the results — set them before or after fetching.</p>
     </section>
 
-    <details id="proxy-panel" class="panel">
+    <details id="proxy-panel" class="panel collapsible">
       <summary>
         <span class="summary-title">Proxy &amp; download mode</span>
         <span id="proxy-badge" class="badge">Direct</span>
@@ -157,8 +157,20 @@
       </fieldset>
     </details>
 
-    <div id="fetch-stats" class="panel statsbox" aria-live="polite"></div>
-    <div id="download-stats" class="panel statsbox" hidden aria-live="polite"></div>
+    <details id="fetch-stats-panel" class="panel statsbox collapsible">
+      <summary>
+        <span class="summary-title stats-title">Fetch statistics</span>
+        <span id="fetch-stats-badge" class="badge">Idle</span>
+      </summary>
+      <div id="fetch-stats" aria-live="polite"></div>
+    </details>
+    <details id="download-stats-panel" class="panel statsbox collapsible" hidden>
+      <summary>
+        <span class="summary-title stats-title">Download statistics</span>
+        <span id="download-stats-badge" class="badge"></span>
+      </summary>
+      <div id="download-stats" aria-live="polite"></div>
+    </details>
 
     <section id="results-section" class="panel" hidden aria-live="polite">
       <div class="toolbar">
@@ -183,7 +195,7 @@
 
     <p id="status" class="status" role="status" aria-live="polite"></p>
 
-    <details id="history-panel" class="panel">
+    <details id="history-panel" class="panel collapsible">
       <summary>
         <span class="summary-title history-title">History</span>
         <span id="history-count" class="badge">0</span>

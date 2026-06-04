@@ -6,12 +6,12 @@
 - [x] 1.3 Verify gaps between all top-level panels are equal
 
 ## Phase 2 — Collapsible statistics panels (collapsed by default) + persisted UI state
-- [ ] 2.1 `index.html` — convert fetch-stats + download-stats to `<details>` with summary
+- [x] 2.1 `index.html` — convert fetch-stats + download-stats to `<details>` with summary
         (title + status badge) and an inner grid container; collapsed by default
-- [ ] 2.2 `styles.css` — collapsible summary + badge colour variants + stats title icon
-- [ ] 2.3 `src/app.js` — split buildStatGrid into buildStatCells (grid only); update
+- [x] 2.2 `styles.css` — collapsible summary + badge colour variants + stats title icon
+- [x] 2.3 `src/app.js` — split buildStatGrid into buildStatCells (grid only); update
         renderFetchStats/Idle + renderDownloadStats to set the badge + inner grid + show panel
-- [ ] 2.4 `src/app.js` — persist open/closed state of all collapsible panels
+- [x] 2.4 `src/app.js` — persist open/closed state of all collapsible panels
         (proxy/fetch/download/history) in `rd.ui.v1`, restore on init
 
 ## Phase 3 — Custom "Clear stored data" modal

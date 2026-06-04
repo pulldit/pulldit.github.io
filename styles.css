@@ -106,13 +106,19 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .btn.ghost { background: transparent; }
 
 /* Proxy panel */
-#proxy-panel summary, #history-panel summary {
+.collapsible > summary {
   list-style: none; cursor: pointer; display: flex; align-items: center; gap: 0.6rem;
   font-weight: 700; user-select: none;
 }
-#proxy-panel summary::-webkit-details-marker, #history-panel summary::-webkit-details-marker { display: none; }
+.collapsible > summary::-webkit-details-marker { display: none; }
+.collapsible > summary::after { content: "▸"; color: var(--text-dim); transition: transform 0.15s ease; }
+.collapsible[open] > summary::after { transform: rotate(90deg); }
 #proxy-panel .summary-title::before { content: "⚙ "; }
 .history-title::before { content: "🕓 "; }
+.stats-title::before { content: "📊 "; }
+.badge.good { background: rgba(46, 160, 67, 0.18); color: var(--safe); border-color: transparent; }
+.badge.bad { background: rgba(248, 81, 73, 0.18); color: var(--danger); border-color: transparent; }
+.badge.warn { background: rgba(210, 153, 34, 0.18); color: var(--warn); border-color: transparent; }
 
 /* History */
 .history-toolbar { margin: 1rem 0 0.6rem; }
