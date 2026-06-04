@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=28" />
+  <link rel="stylesheet" href="styles.css?v=29" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -97,10 +97,11 @@
         </label>
         <label class="field compact">
           <span class="field-label">Limit</span>
-          <input id="limit" name="limit" type="number" min="1" max="100" value="50" />
+          <input id="limit" name="limit" type="number" min="1" max="2000" value="50" />
         </label>
         <button id="fetch-btn" type="submit" class="btn primary">Fetch media</button>
       </div>
+      <p id="pagination-hint" class="hint pagination-hint" hidden></p>
     </form>
 
     <details id="links-panel" class="panel collapsible">
@@ -445,6 +446,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=28"></script>
+  <script type="module" src="src/app.js?v=29"></script>
 </body>
 </html>

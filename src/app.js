@@ -149,7 +149,7 @@ function applySavedOptions() {
   if (sorts.includes(o.sort)) $('sort').value = o.sort;
   if (['', 'hour', 'day', 'week', 'month', 'year', 'all'].includes(o.time)) $('time').value = o.time;
   const lim = Number(o.limit);
-  if (Number.isFinite(lim) && lim >= 1 && lim <= 100) $('limit').value = String(lim);
+  if (Number.isFinite(lim) && lim >= 1 && lim <= 2000) $('limit').value = String(Math.round(lim));
 }
 
 /* ----------------------------- persisted statistics ----------------------------- */
@@ -1588,6 +1588,7 @@ function init() {
   for (const id of ['sort', 'time', 'limit']) {
     $(id).addEventListener('change', saveOptions);
   }
+  $('limit').addEventListener('input', syncLimitField); // live ">100 auto-pagination" hint
   applyAdvancedToUi();
   for (const id of ['adv-delay', 'adv-timeout', 'adv-maxfile', 'adv-maxzip', 'adv-skip', 'adv-count-discarded', 'adv-autosave-links', 'adv-history-limit', 'adv-history-overwrite', 'adv-validate-magic', 'adv-validate-decode', 'adv-auto-paginate', 'adv-max-items', 'adv-page-delay']) {
     $(id).addEventListener('change', readAdvancedFromUi);
