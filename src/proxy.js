@@ -144,25 +144,78 @@ async function timedFetch(url, opts = {}) {
 }
 
 /**
- * Fetch + parse a Reddit listing JSON. In direct mode this hits Reddit directly; with a
- * proxy configured the request is routed through it (more resilient to IP/CORS blocks).
- * @param {string} jsonUrl
- * @param {object} settings
- * @param {{ timeoutMs?: number, signal?: AbortSignal }} [opts]
+ * Classify a non-JSON response body (Reddit's HTML block/limit page) into a precise error.
+ * Reddit serves an HTML interstitial — never JSON — when it blocks or throttles a request.
+ * @param {string} text
  */
-export async function fetchJson(jsonUrl, settings, opts = {}) {
-  const target = buildProxiedUrl(jsonUrl, settings);
-  if (!target) throw new Error('invalid proxy configuration');
-  const res = await timedFetch(target, { ...opts, accept: 'application/json' });
+export function classifyBlockText(text) {
+  const s = String(text || '').slice(0, 4000).toLowerCase();
+  if (/too many requests|rate.?limit|\b429\b/.test(s)) {
+    return 'Reddit rate-limited the request (HTTP 429) — try again shortly';
+  }
+  if (/blocked|forbidden|whoa there|access denied|not allowed|<!doctype|<html/.test(s)) {
+    return 'Reddit blocked the request (it is likely blocking this proxy server)';
+  }
+  return 'Reddit did not return JSON (it may be blocking this request)';
+}
+
+/**
+ * Single listing attempt against one fully-built (already proxied) URL.
+ * @param {string} targetUrl
+ * @param {{ timeoutMs?: number, signal?: AbortSignal }} opts
+ * @returns {Promise<{ json: any, bytes: number }>}
+ */
+async function attemptListing(targetUrl, opts) {
+  const res = await timedFetch(targetUrl, { ...opts, accept: 'application/json' });
   if (!res.ok) throw new Error(`Reddit request failed (HTTP ${res.status})`);
   const bytes = await readCapped(res, 16 * 1024 * 1024); // 16 MB cap for a listing
-  if (opts.stats && typeof opts.stats === 'object') opts.stats.bytes = bytes.byteLength;
   const text = new TextDecoder('utf-8').decode(bytes);
   try {
-    return JSON.parse(text);
+    return { json: JSON.parse(text), bytes: bytes.byteLength };
   } catch {
-    throw new Error('Reddit did not return JSON (it may be blocking this request)');
+    throw new Error(classifyBlockText(text));
   }
+}
+
+/**
+ * Fetch + parse a Reddit listing JSON.
+ *  - direct : hits Reddit directly (works from non-blocked, e.g. residential, IPs).
+ *  - worker : routes through the user's own Cloudflare Worker.
+ *  - public : tries the SELECTED proxy first, then automatically falls back to the others.
+ *             Each public proxy is best-effort (Reddit may be blocking its server IP), so
+ *             trying them in turn maximizes the chance one currently works.
+ * @param {string} jsonUrl
+ * @param {object} settings
+ * @param {{ timeoutMs?: number, signal?: AbortSignal, stats?: object }} [opts]
+ */
+export async function fetchJson(jsonUrl, settings, opts = {}) {
+  const r = resolveProxy(settings);
+  if (!r.ok) throw new Error('invalid proxy configuration');
+
+  if (r.mode === ProxyMode.PUBLIC) {
+    // Selected proxy first, then the remaining ones as automatic fallback.
+    const ordered = [r.proxy, ...PUBLIC_PROXIES.filter((p) => p.id !== r.proxy.id)];
+    const errors = [];
+    for (const proxy of ordered) {
+      try {
+        const { json, bytes } = await attemptListing(proxy.build(jsonUrl), opts);
+        if (opts.stats && typeof opts.stats === 'object') {
+          opts.stats.bytes = bytes;
+          opts.stats.proxyId = proxy.id;
+        }
+        return json;
+      } catch (err) {
+        errors.push(`${proxy.label}: ${err && err.message ? err.message : err}`);
+      }
+    }
+    throw new Error(`All public proxies failed — ${errors.join(' · ')}`);
+  }
+
+  const target = buildProxiedUrl(jsonUrl, settings);
+  if (!target) throw new Error('invalid proxy configuration');
+  const { json, bytes } = await attemptListing(target, opts);
+  if (opts.stats && typeof opts.stats === 'object') opts.stats.bytes = bytes;
+  return json;
 }
 
 /**

@@ -53,13 +53,15 @@ export const LIMITS = Object.freeze({
 // Public CORS proxies the user may opt into (mode 3). These are third parties that can
 // observe traffic — surfaced with an explicit warning in the UI. `build(rawUrl)` returns
 // the proxied URL. Origins are listed so the page CSP can allowlist exactly these.
+//
+// IMPORTANT (verified 2026-06): Reddit IP-blocks datacenter ranges (HTTP 403/429) regardless
+// of User-Agent, so EVERY public proxy is best-effort — it works only while Reddit is not
+// blocking that proxy's server IP. The app therefore tries them in turn (automatic fallback)
+// and falls back to clear guidance. Both proxies below are RAW pass-throughs: the response
+// body is the upstream bytes verbatim, so they work for BOTH the listing JSON and media bytes
+// (ZIP). corsproxy.io (now a paid plan → 403) and thingproxy.freeboard.io (offline) were
+// removed because they no longer function for anonymous use.
 export const PUBLIC_PROXIES = Object.freeze([
-  Object.freeze({
-    id: 'corsproxy',
-    label: 'corsproxy.io',
-    origin: 'https://corsproxy.io',
-    build: (raw) => `https://corsproxy.io/?url=${encodeURIComponent(raw)}`,
-  }),
   Object.freeze({
     id: 'allorigins',
     label: 'allorigins.win',
@@ -67,9 +69,12 @@ export const PUBLIC_PROXIES = Object.freeze([
     build: (raw) => `https://api.allorigins.win/raw?url=${encodeURIComponent(raw)}`,
   }),
   Object.freeze({
-    id: 'thingproxy',
-    label: 'thingproxy.freeboard.io',
-    origin: 'https://thingproxy.freeboard.io',
-    build: (raw) => `https://thingproxy.freeboard.io/fetch/${raw}`,
+    id: 'codetabs',
+    label: 'codetabs.com',
+    origin: 'https://api.codetabs.com',
+    build: (raw) => `https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(raw)}`,
   }),
 ]);
+
+// The proxy selected by default (and the migration target for any unknown saved id).
+export const DEFAULT_PUBLIC_ID = PUBLIC_PROXIES[0].id;

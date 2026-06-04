@@ -28,16 +28,16 @@
 - [x] build + commit
 
 ## Fix 3 — Proxy modes actually work (or fail honestly)
-- [ ] Replace `PUBLIC_PROXIES`: drop dead corsproxy.io + thingproxy; keep allorigins (`/raw`) + codetabs
+- [x] Replace `PUBLIC_PROXIES`: drop dead corsproxy.io + thingproxy; keep allorigins (`/raw`) + codetabs
       (both raw passthrough → work for listing JSON *and* media bytes)
-- [ ] `fetchJson`: automatic fallback chain (selected proxy first, then the rest) with
+- [x] `fetchJson`: automatic fallback chain (selected proxy first, then the rest) with
       block/rate-limit/HTML detection (`classifyBlockText`)
-- [ ] Update CSP `connect-src` to the new proxy origins
-- [ ] Update `#public-proxy` select options
-- [ ] Migrate stored `publicId` default (`corsproxy` → first valid) + validation in `app.js`
-- [ ] Accurate `handleFetchError` messages per mode (direct / public / worker)
-- [ ] Update `proxy.test.js` for the new proxy list + fallback behavior
-- [ ] build + commit
+- [x] Update CSP `connect-src` to the new proxy origins
+- [x] Update `#public-proxy` select options
+- [x] Migrate stored `publicId` default (`corsproxy` → first valid) + validation in `app.js`
+- [x] Accurate `handleFetchError` messages per mode (direct / public / worker)
+- [x] Update `proxy.test.js` for the new proxy list + fallback behavior
+- [x] build + commit
 
 ## Cleanup
 - [ ] Remove this TODO.md, final build + commit

@@ -1,9 +1,9 @@
 // UI controller. Wires the DOM to the pure modules. All rendering uses createElement +
 // textContent (never innerHTML with data), matching the strict CSP. No inline handlers.
 
-import { APP, LIMITS } from './config.js';
+import { APP, LIMITS, DEFAULT_PUBLIC_ID } from './config.js';
 import { parseInput, buildJsonUrl, normalizeListing } from './reddit.js';
-import { fetchJson, canZip, resolveProxy, ProxyMode } from './proxy.js';
+import { fetchJson, canZip, resolveProxy, getPublicProxy, ProxyMode } from './proxy.js';
 import { downloadSingle, downloadZip } from './download.js';
 import { applyFilters, normalizeFilters } from './filters.js';
 import {
@@ -41,15 +41,17 @@ let dlStart = 0;
 /* ----------------------------- settings ----------------------------- */
 
 function loadSettings() {
-  const fallback = { mode: ProxyMode.DIRECT, workerUrl: '', publicId: 'corsproxy' };
+  const fallback = { mode: ProxyMode.DIRECT, workerUrl: '', publicId: DEFAULT_PUBLIC_ID };
   try {
     const raw = localStorage.getItem(SETTINGS_KEY);
     if (!raw) return fallback;
     const parsed = JSON.parse(raw);
+    // Migrate any stale/removed proxy id (e.g. corsproxy/thingproxy) to a valid one.
+    const publicId = getPublicProxy(parsed.publicId) ? parsed.publicId : DEFAULT_PUBLIC_ID;
     return {
       mode: [ProxyMode.DIRECT, ProxyMode.WORKER, ProxyMode.PUBLIC].includes(parsed.mode) ? parsed.mode : ProxyMode.DIRECT,
       workerUrl: typeof parsed.workerUrl === 'string' ? parsed.workerUrl : '',
-      publicId: typeof parsed.publicId === 'string' ? parsed.publicId : 'corsproxy',
+      publicId,
     };
   } catch {
     return fallback;
@@ -354,10 +356,17 @@ async function onSearch(event) {
 
 function handleFetchError(err) {
   const msg = err?.message ? String(err.message) : String(err);
-  if (settings.mode === ProxyMode.DIRECT && /JSON|HTTP|Failed|fetch|network/i.test(msg)) {
+  if (settings.mode === ProxyMode.DIRECT) {
     setStatus(
-      'Reddit refused the direct request (it sometimes blocks anonymous browser requests). ' +
-        'Open “Proxy & download mode” and try a proxy.',
+      'Reddit refused the direct request (it blocks some IPs and cross-origin browser requests). ' +
+        'Open “Proxy & download mode” and pick a public proxy, or set up your own Cloudflare Worker.',
+      'error',
+    );
+  } else if (settings.mode === ProxyMode.PUBLIC) {
+    setStatus(
+      'All public proxies failed — Reddit is currently blocking their servers. ' +
+        'Try again shortly, switch proxy, or run your own Cloudflare Worker for reliable access. ' +
+        '(' + msg + ')',
       'error',
     );
   } else {
@@ -877,7 +886,7 @@ function performClear() {
     setBadge('download-stats-badge', '', '');
   }
   if (sel.settings) {
-    settings = { mode: ProxyMode.DIRECT, workerUrl: '', publicId: 'corsproxy' };
+    settings = { mode: ProxyMode.DIRECT, workerUrl: '', publicId: DEFAULT_PUBLIC_ID };
     syncProxyUi();
   }
   if (sel.filters) {

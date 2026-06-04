@@ -25,7 +25,7 @@
     font-src 'self';
     manifest-src 'self';
     img-src 'self' data: https://i.redd.it https://preview.redd.it https://external-preview.redd.it https://a.thumbs.redditmedia.com https://b.thumbs.redditmedia.com https://i.imgur.com;
-    connect-src 'self' https://www.reddit.com https://old.reddit.com https://i.redd.it https://v.redd.it https://preview.redd.it https://external-preview.redd.it https://i.imgur.com https://corsproxy.io https://api.allorigins.win https://thingproxy.freeboard.io;
+    connect-src 'self' https://www.reddit.com https://old.reddit.com https://i.redd.it https://v.redd.it https://preview.redd.it https://external-preview.redd.it https://i.imgur.com https://api.allorigins.win https://api.codetabs.com;
   " />
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
@@ -148,10 +148,12 @@
             <small>Convenient bulk ZIP with zero setup, but a third party relays the
               traffic. Pick one:</small>
             <select id="public-proxy" class="inline-input">
-              <option value="corsproxy">corsproxy.io</option>
               <option value="allorigins">allorigins.win</option>
-              <option value="thingproxy">thingproxy.freeboard.io</option>
+              <option value="codetabs">codetabs.com</option>
             </select>
+            <small>If one is down or Reddit is blocking it, Pulldit automatically tries the
+              other. All public proxies are best-effort — Reddit blocks their servers from
+              time to time. For reliable bulk ZIP, run your own Worker (above).</small>
           </span>
         </label>
       </fieldset>
