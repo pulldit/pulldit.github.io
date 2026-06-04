@@ -6,6 +6,10 @@ describe('unescapeHtml', () => {
     expect(unescapeHtml('a&amp;b=1&amp;c=2')).toBe('a&b=1&c=2');
     expect(unescapeHtml('x&lt;y&gt;z&quot;q&#39;p')).toBe('x<y>z"q\'p');
   });
+  it('does not double-unescape (&amp;lt; -> &lt;, not <)', () => {
+    expect(unescapeHtml('a&amp;lt;b')).toBe('a&lt;b');
+    expect(unescapeHtml('q=1&amp;amp;r=2')).toBe('q=1&amp;r=2');
+  });
 });
 
 describe('parseInput', () => {

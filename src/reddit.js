@@ -18,12 +18,14 @@ const POSTID_RE = /^[a-z0-9]{1,10}$/i;
  */
 export function unescapeHtml(s) {
   if (typeof s !== 'string') return '';
+  // Decode `&amp;` LAST so we never re-process an ampersand we just produced
+  // (e.g. "&amp;lt;" must become "&lt;", not "<"). Avoids double-unescaping.
   return s
-    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/&#(?:0*39|x0*27);/g, "'");
+    .replace(/&#(?:0*39|x0*27);/g, "'")
+    .replace(/&amp;/g, '&');
 }
 
 /**
