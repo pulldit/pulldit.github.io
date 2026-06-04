@@ -338,3 +338,39 @@ export function normalizeListing(json) {
   }
   return { items, after, stats: finalizeStats(items, base) };
 }
+
+/**
+ * Merge several already-normalized listing pages into one result: concatenate items in order
+ * while de-duplicating by `id` (Reddit pagination can repeat a post across page boundaries),
+ * sum the per-page post counters, and recompute the media breakdown over the merged set so the
+ * stats reflect the real (deduped, capped) items — not a naive page sum. Pure + tested.
+ * @param {Array<{ items: Array<object>, stats: object }>} pages
+ * @param {number} [cap] hard ceiling on total merged items (truncation marks stats.capped)
+ * @returns {{ items: Array<object>, stats: object }}
+ */
+export function aggregatePages(pages, cap = LIMITS.maxItems) {
+  const list = Array.isArray(pages) ? pages : [];
+  const seen = new Set();
+  let items = [];
+  const base = { postsScanned: 0, postsWithMedia: 0, dropped: 0, galleries: 0, capped: false };
+  for (const page of list) {
+    const st = (page && page.stats) || {};
+    base.postsScanned += Number(st.postsScanned) || 0;
+    base.postsWithMedia += Number(st.postsWithMedia) || 0;
+    base.dropped += Number(st.dropped) || 0;
+    base.galleries += Number(st.galleries) || 0;
+    if (st.capped) base.capped = true;
+    for (const it of (page && page.items) || []) {
+      const key = it && it.id != null ? it.id : it;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push(it);
+    }
+  }
+  const limit = Number.isFinite(cap) && cap > 0 ? cap : LIMITS.maxItems;
+  if (items.length > limit) {
+    items = items.slice(0, limit);
+    base.capped = true;
+  }
+  return { items, stats: finalizeStats(items, base) };
+}

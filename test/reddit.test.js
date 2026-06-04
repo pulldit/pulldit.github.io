@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseInput, buildJsonUrl, normalizeListing, unescapeHtml, singleMediaItem, pickPreviewUrl } from '../src/reddit.js';
+import { parseInput, buildJsonUrl, normalizeListing, unescapeHtml, singleMediaItem, pickPreviewUrl, aggregatePages } from '../src/reddit.js';
 
 describe('unescapeHtml', () => {
   it('decodes the entities reddit emits', () => {
@@ -211,5 +211,39 @@ describe('normalizeListing', () => {
       listing([]),
     ];
     expect(normalizeListing(arr).items).toHaveLength(1);
+  });
+});
+
+describe('aggregatePages', () => {
+  const page = (items, counters = {}) => ({
+    items,
+    stats: { postsScanned: 0, postsWithMedia: 0, dropped: 0, galleries: 0, capped: false, ...counters },
+  });
+  const img = (id) => ({ id, type: 'image', host: 'i.redd.it' });
+
+  it('merges pages, de-dupes by id, and sums post counters', () => {
+    const p1 = page([img('a'), img('b')], { postsScanned: 2, postsWithMedia: 2, galleries: 1 });
+    const p2 = page([img('b'), img('c')], { postsScanned: 2, postsWithMedia: 1, dropped: 1 });
+    const { items, stats } = aggregatePages([p1, p2], 100);
+    expect(items.map((i) => i.id)).toEqual(['a', 'b', 'c']); // 'b' merged once
+    expect(stats).toMatchObject({ postsScanned: 4, postsWithMedia: 3, dropped: 1, galleries: 1, found: 3, capped: false });
+    expect(stats.byType).toEqual({ image: 3, gif: 0, video: 0 });
+  });
+
+  it('caps merged items and marks capped', () => {
+    const { items, stats } = aggregatePages([page([img('a'), img('b'), img('c')])], 2);
+    expect(items).toHaveLength(2);
+    expect(stats.capped).toBe(true);
+    expect(stats.found).toBe(2);
+  });
+
+  it('ORs the per-page capped flag', () => {
+    expect(aggregatePages([page([img('a')], { capped: true })], 100).stats.capped).toBe(true);
+  });
+
+  it('tolerates empty / malformed input', () => {
+    expect(aggregatePages([]).items).toEqual([]);
+    expect(aggregatePages(null).items).toEqual([]);
+    expect(aggregatePages([{}]).items).toEqual([]);
   });
 });
