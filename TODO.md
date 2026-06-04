@@ -44,11 +44,11 @@ public release.
 - [x] 6.2 `worker/README.md` — deploy steps (wrangler + dashboard), CSP note
 
 ## Phase 7 — CI/CD (GitHub Actions)
-- [ ] 7.1 `.github/workflows/ci.yml` — install, syntax-check, tests on push/PR
-- [ ] 7.2 `.github/workflows/deploy.yml` — auto-deploy to GitHub Pages on main
-- [ ] 7.3 `.github/workflows/codeql.yml` — CodeQL JS security scan
-- [ ] 7.4 `.github/workflows/security.yml` — npm audit + dependency review
-- [ ] 7.5 `.github/dependabot.yml` — weekly dep + actions updates
+- [x] 7.1 `.github/workflows/ci.yml` — install, syntax-check, tests on push/PR
+- [x] 7.2 `.github/workflows/deploy.yml` — auto-deploy to GitHub Pages on main
+- [x] 7.3 `.github/workflows/codeql.yml` — CodeQL JS security scan
+- [x] 7.4 `.github/workflows/security.yml` — npm audit + dependency review
+- [x] 7.5 `.github/dependabot.yml` — weekly dep + actions updates
 
 ## Phase 8 — Docs, license & finalize
 - [ ] 8.1 `LICENSE` (MIT — disclaims warranty & liability)
