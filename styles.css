@@ -26,6 +26,10 @@
 
 * { box-sizing: border-box; }
 
+/* The `hidden` attribute must always win, even over author rules that set `display`
+   (e.g. `.radio { display: flex }` would otherwise keep a [hidden] element visible). */
+[hidden] { display: none !important; }
+
 html { -webkit-text-size-adjust: 100%; }
 
 body {
@@ -147,6 +151,7 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .tag { font-style: normal; font-size: 0.7rem; font-weight: 700; padding: 0.1rem 0.45rem; border-radius: 999px; vertical-align: middle; }
 .tag.safe { background: rgba(46, 160, 67, 0.18); color: var(--safe); }
 .tag.warn { background: rgba(210, 153, 34, 0.18); color: var(--warn); }
+.ext-ver { color: var(--safe); font-weight: 700; }
 .inline-input { margin-top: 0.6rem; max-width: 420px; }
 
 /* Statistics */

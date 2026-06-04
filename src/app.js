@@ -1014,10 +1014,12 @@ function init() {
 function initExtensionMode() {
   const option = $('ext-mode-option');
   const hint = $('ext-install-hint');
-  detectExtension().then(({ available }) => {
+  detectExtension().then(({ available, version }) => {
     if (available) {
       if (option) option.hidden = false;
       if (hint) hint.hidden = true;
+      const verEl = $('ext-version');
+      if (verEl) verEl.textContent = version ? `Detected ✓ v${version}` : 'Detected ✓';
       // The Extension radio lives inside the collapsible proxy panel — make it discoverable
       // by opening the panel and pointing the user there (until they actually adopt the mode).
       if (settings.mode !== ProxyMode.EXTENSION) {

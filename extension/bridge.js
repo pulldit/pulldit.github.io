@@ -15,7 +15,8 @@
  */
 (function () {
   const TAG = '__pulldit';
-  const VERSION = '1.0.1';
+  // Single source of truth: read the version from manifest.json (no hardcoded duplicate).
+  const VERSION = chrome.runtime.getManifest().version;
 
   function post(obj) {
     try {

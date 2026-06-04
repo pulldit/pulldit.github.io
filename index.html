@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=9" />
+  <link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -125,9 +125,9 @@
           <input type="radio" name="proxy-mode" value="extension" />
           <span>
             <strong>Pulldit Extension</strong> <em class="tag safe">ZIP · your IP · most reliable</em>
-            <small>Detected ✓ — fetches Reddit &amp; media from <strong>your own IP</strong> via the
-              installed extension. Full bulk ZIP, no third-party proxy, and it keeps working when
-              Reddit blocks datacenter proxies.</small>
+            <small><span id="ext-version" class="ext-ver">Detected ✓</span> — fetches Reddit &amp; media
+              from <strong>your own IP</strong> via the installed extension. Full bulk ZIP, no
+              third-party proxy, and it keeps working when Reddit blocks datacenter proxies.</small>
           </span>
         </label>
 
@@ -335,6 +335,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=9"></script>
+  <script type="module" src="src/app.js?v=10"></script>
 </body>
 </html>

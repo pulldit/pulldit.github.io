@@ -16,7 +16,8 @@
  *     like the user's own tab — but only ever to the first-party target host, never to us.
  */
 
-const VERSION = '1.0.1';
+// Single source of truth: the version comes from manifest.json (bump it with `npm run bump:ext`).
+const VERSION = chrome.runtime.getManifest().version;
 
 // Hosts we will fetch the listing JSON from.
 const REDDIT_HOSTS = [

@@ -11,6 +11,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "npm run check && npm run test",
+    "bump:ext": "python scripts/bump-extension.py",
     "pack:ext": "python scripts/pack-extension.py",
     "serve": "http-server . -p 8080 -c-1 -s"
   },

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Pulldit Bridge",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Lets pulldit.github.io download Reddit media and build ZIPs from YOUR own IP — no proxy, no CORS limits. Locked to Reddit/imgur hosts.",
   "homepage_url": "https://github.com/pulldit/pulldit.github.io/tree/main/extension",
   "icons": {
