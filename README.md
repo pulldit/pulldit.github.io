@@ -39,9 +39,14 @@ that fetches everything from your own IP (the most reliable, proxy-free path).
 - 📄 **Auto-pagination** — Reddit caps a listing request at 100 items, so a **Limit above 100**
   transparently fetches multiple pages (following the `after` cursor) up to a configurable **Max
   items**, with a delay between requests; the Limit field shows a hint when it kicks in.
-- ✅ Select what you want, download **individually** or as a single **ZIP**.
-- 🧩 Optional **browser extension** for proxy-free ZIP from your own IP (most reliable). Switchable
-  proxy mode otherwise (see below). Your choice is remembered locally.
+- ✅ Select what you want, download **individually** or as **ZIP(s)** — big selections are split
+  into **automatic batches** so one click downloads them all, named after the source
+  (`pulldit-<subreddit>-<sort>[-<time>]`). Progress bars plus **Stop** (fetch & download) and
+  **Pause/Resume** (download) controls, and a **Hide saved** toggle to clear already-grabbed items
+  from view.
+- 🧩 Optional **browser extension** for proxy-free ZIP from your own IP (most reliable; the page
+  shows its version and an **update notice** when a newer build is released). Switchable proxy
+  mode otherwise (see below). Your choice is remembered locally.
 - 🔗 **Link history** — re-fetch past links in one click (newest = latest fetch), remove
   individual links, and an **auto-save** toggle (off = curate manually via “+ Add current link”).
 - 🕘 **Activity history** — a detailed log (fetch shows sort · time · proxy mode; downloads show
