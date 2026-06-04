@@ -265,14 +265,48 @@ function itemTitle(id) {
   return it ? it.title || it.id : id;
 }
 
-function onFilterChange() {
+// Filter groups: each must keep at least one option enabled, otherwise the group hides every
+// item (e.g. both sources off → nothing shows, even with media found).
+const TYPE_FILTERS = ['image', 'gif', 'video'];
+const SOURCE_FILTERS = ['reddit', 'imgur'];
+
+function onFilterChange(event) {
   const next = {};
   for (const cb of document.querySelectorAll('#filters input[data-filter]')) {
     next[cb.dataset.filter] = cb.checked;
   }
+  const target = event && event.target;
+  const key = target && target.dataset ? target.dataset.filter : null;
+  for (const group of [TYPE_FILTERS, SOURCE_FILTERS]) {
+    // If the user just unchecked the LAST active option in a group, revert that one toggle.
+    if (key && group.includes(key) && group.every((k) => next[k] === false)) {
+      next[key] = true;
+      if (target) target.checked = true;
+      const label = group === SOURCE_FILTERS ? 'source (Reddit or imgur)' : 'media type';
+      setStatus(`At least one ${label} must stay enabled.`, '');
+    }
+  }
   filters = normalizeFilters(next);
   saveFilters();
   refreshView();
+}
+
+/** Repair a persisted filter state that has an entire group disabled (re-enable that group). */
+function repairFilterGroups() {
+  let changed = false;
+  for (const group of [TYPE_FILTERS, SOURCE_FILTERS]) {
+    if (group.every((k) => filters[k] === false)) {
+      for (const k of group) filters[k] = true;
+      changed = true;
+    }
+  }
+  if (changed) {
+    filters = normalizeFilters(filters);
+    saveFilters();
+    for (const cb of document.querySelectorAll('#filters input[data-filter]')) {
+      cb.checked = filters[cb.dataset.filter] !== false;
+    }
+  }
 }
 
 /* ----------------------------- view derivation ----------------------------- */
@@ -1004,6 +1038,7 @@ function init() {
     cb.checked = filters[cb.dataset.filter] !== false;
     cb.addEventListener('change', onFilterChange);
   }
+  repairFilterGroups();
   applySavedOptions();
   for (const id of ['sort', 'time', 'limit']) {
     $(id).addEventListener('change', saveOptions);
