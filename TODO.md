@@ -24,9 +24,9 @@ public release.
 - [x] 2.3 `test/reddit.test.js` — input parsing + normalization fixtures
 
 ## Phase 3 — Proxy + fetch layer
-- [ ] 3.1 `src/proxy.js` — ProxyMode, presets, buildProxiedUrl, zip capability flag
-- [ ] 3.2 `src/proxy.js` — fetchJson (direct), fetchBytes (via proxy) w/ timeout + size guard
-- [ ] 3.3 `test/proxy.test.js` — proxied URL building per mode + validation
+- [x] 3.1 `src/proxy.js` — ProxyMode, presets, buildProxiedUrl, zip capability flag
+- [x] 3.2 `src/proxy.js` — fetchJson (direct), fetchBytes (via proxy) w/ timeout + size guard
+- [x] 3.3 `test/proxy.test.js` — proxied URL building per mode + validation
 
 ## Phase 4 — Download + ZIP
 - [ ] 4.1 `src/download.js` — downloadSingle (named via proxy, else open) via FileSaver
