@@ -156,6 +156,7 @@ export async function fetchJson(jsonUrl, settings, opts = {}) {
   const res = await timedFetch(target, { ...opts, accept: 'application/json' });
   if (!res.ok) throw new Error(`Reddit request failed (HTTP ${res.status})`);
   const bytes = await readCapped(res, 16 * 1024 * 1024); // 16 MB cap for a listing
+  if (opts.stats && typeof opts.stats === 'object') opts.stats.bytes = bytes.byteLength;
   const text = new TextDecoder('utf-8').decode(bytes);
   try {
     return JSON.parse(text);

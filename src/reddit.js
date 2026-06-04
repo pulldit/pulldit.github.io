@@ -6,6 +6,7 @@
 
 import { REDDIT_API_ORIGIN, REDDIT_HOSTS, LIMITS } from './config.js';
 import { hostMatchesAllowlist, parseHttpUrl, validateMediaUrl, extFromUrl } from './url-guard.js';
+import { summarizeItems } from './stats.js';
 
 export const SORTS = Object.freeze(['hot', 'new', 'top', 'rising', 'controversial', 'best']);
 const SUBREDDIT_RE = /^[A-Za-z0-9_]{1,21}$/;
@@ -232,9 +233,25 @@ function finalize(items) {
 }
 
 /**
- * Normalize a Reddit listing OR a comments-page array into a flat MediaItem[].
+ * Combine running counters with per-item breakdowns into the final stats object.
+ * @param {Array<object>} items
+ * @param {{ postsScanned: number, postsWithMedia: number, dropped: number, galleries: number, capped: boolean }} base
+ */
+function finalizeStats(items, base) {
+  const s = summarizeItems(items);
+  return {
+    ...base,
+    found: items.length,
+    byType: { image: s.image, gif: s.gif, video: s.video },
+    bySource: { reddit: s.reddit, imgur: s.imgur, other: s.other },
+    nsfw: s.nsfw,
+  };
+}
+
+/**
+ * Normalize a Reddit listing OR a comments-page array into a flat MediaItem[] plus stats.
  * @param {any} json
- * @returns {{ items: Array<object>, after: string|null }}
+ * @returns {{ items: Array<object>, after: string|null, stats: object }}
  */
 export function normalizeListing(json) {
   let children = [];
@@ -248,12 +265,24 @@ export function normalizeListing(json) {
   }
 
   const items = [];
+  const base = { postsScanned: 0, postsWithMedia: 0, dropped: 0, galleries: 0, capped: false };
   for (const child of children) {
     if (child?.kind !== 't3') continue;
-    for (const item of extractFromPost(child.data)) {
+    base.postsScanned += 1;
+    if (child.data?.is_gallery) base.galleries += 1;
+    const extracted = extractFromPost(child.data);
+    if (extracted.length === 0) {
+      base.dropped += 1;
+      continue;
+    }
+    base.postsWithMedia += 1;
+    for (const item of extracted) {
       items.push(item);
-      if (items.length >= LIMITS.maxItems) return { items, after };
+      if (items.length >= LIMITS.maxItems) {
+        base.capped = true;
+        return { items, after, stats: finalizeStats(items, base) };
+      }
     }
   }
-  return { items, after };
+  return { items, after, stats: finalizeStats(items, base) };
 }

@@ -127,6 +127,36 @@ describe('normalizeListing', () => {
     expect(normalizeListing(json).items).toHaveLength(0);
   });
 
+  it('reports fetch statistics', () => {
+    const json = listing([
+      t3({
+        id: 'g1', title: 'Gallery', subreddit: 'pics', permalink: '/r/pics/comments/g1/',
+        is_gallery: true,
+        gallery_data: { items: [{ media_id: 'aaa' }, { media_id: 'bbb' }] },
+        media_metadata: {
+          aaa: { status: 'valid', m: 'image/jpg', s: { u: 'https://preview.redd.it/aaa.jpg' } },
+          bbb: { status: 'valid', m: 'image/png', s: { u: 'https://preview.redd.it/bbb.png' } },
+        },
+      }),
+      t3({ id: 'v1', title: 'v', subreddit: 'x', permalink: '/r/x/comments/v1/', is_video: true, media: { reddit_video: { fallback_url: 'https://v.redd.it/v1/DASH_720.mp4?x=1' } } }),
+      t3({ id: 's1', title: 'self', subreddit: 'x', permalink: '/r/x/comments/s1/', is_self: true, url: 'https://www.reddit.com/r/x/comments/s1/' }),
+      t3({ id: 'i1', title: 'img', subreddit: 'x', permalink: '/r/x/comments/i1/', url: 'https://i.imgur.com/z.jpg', post_hint: 'image' }),
+    ]);
+    const { items, stats } = normalizeListing(json);
+    expect(items).toHaveLength(4);
+    expect(stats).toMatchObject({
+      postsScanned: 4,
+      postsWithMedia: 3,
+      dropped: 1,
+      galleries: 1,
+      found: 4,
+      nsfw: 0,
+      capped: false,
+    });
+    expect(stats.byType).toEqual({ image: 3, gif: 0, video: 1 });
+    expect(stats.bySource).toEqual({ reddit: 3, imgur: 1, other: 0 });
+  });
+
   it('handles the comments-page array shape', () => {
     const arr = [
       listing([t3({ id: 'p1', title: 't', subreddit: 'a', permalink: '/r/a/comments/p1/', url: 'https://i.redd.it/x.jpg', post_hint: 'image' })]),

@@ -14,10 +14,10 @@ Two features:
 - [x] A4 `test/stats.test.js` — formatting, classification, aggregation
 
 ## Phase B — Fetch statistics (data layer)
-- [ ] B1 `src/reddit.js` — normalizeListing returns `stats` (postsScanned, postsWithMedia,
+- [x] B1 `src/reddit.js` — normalizeListing returns `stats` (postsScanned, postsWithMedia,
         dropped, galleries, byType, bySource, nsfw, capped) without breaking existing shape
-- [ ] B2 `src/proxy.js` — fetchJson reports listing byte size via optional `opts.stats`
-- [ ] B3 `test/reddit.test.js` — assert stats fields
+- [x] B2 `src/proxy.js` — fetchJson reports listing byte size via optional `opts.stats`
+- [x] B3 `test/reddit.test.js` — assert stats fields
 
 ## Phase C — Download statistics (data layer)
 - [ ] C1 `src/download.js` — downloadZip returns per-file `files[]` + totalBytes + elapsedMs,
