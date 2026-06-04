@@ -371,6 +371,13 @@ function handleFetchError(err) {
         '(' + msg + ')',
       'error',
     );
+  } else if (settings.mode === ProxyMode.EXTENSION) {
+    setStatus(
+      'Reddit refused the request even via the extension (' + msg + '). ' +
+        'Make sure you are signed in to reddit.com in this browser (open reddit.com in a tab once) — ' +
+        'Reddit blocks anonymous .json access for some IPs. A public proxy or your own Worker may also work.',
+      'error',
+    );
   } else {
     setStatus('Fetch failed: ' + msg, 'error');
   }

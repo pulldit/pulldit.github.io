@@ -45,8 +45,10 @@ The page auto-detects the extension and only then offers “Pulldit Extension”
 - **Locked to the Pulldit page.** Requests are only served when the sender origin is
   `https://pulldit.github.io` (or `localhost:8080` for local dev).
 - **Minimal permissions.** Only `host_permissions` for the hosts above — no tabs, no storage, no
-  `<all_urls>`. Cookies/credentials are never forwarded; hard size caps apply (16 MB listing,
-  200 MB per file).
+  `<all_urls>`. Hard size caps apply (16 MB listing, 200 MB per file).
+- **Your own session.** Requests are sent with your Reddit cookies (`credentials: 'include'`) so
+  Reddit treats them exactly like your own browser tab (it blocks anonymous `.json` for many IPs).
+  Those cookies only ever go to Reddit/its CDNs (first party) — never to Pulldit or anyone else.
 
 ## Install (load unpacked)
 

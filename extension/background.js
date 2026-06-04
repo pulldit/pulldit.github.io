@@ -12,10 +12,11 @@
  *     an open proxy: a compromised page cannot make it fetch arbitrary origins.
  *   - JSON is only fetched from Reddit hosts; media bytes only from media hosts.
  *   - IP-literal / private / loopback targets are rejected.
- *   - Hard size caps; no cookies/credentials forwarded.
+ *   - Hard size caps. Cookies ARE sent (credentials: 'include') so Reddit treats the request
+ *     like the user's own tab — but only ever to the first-party target host, never to us.
  */
 
-const VERSION = '1.0.0';
+const VERSION = '1.0.1';
 
 // Hosts we will fetch the listing JSON from.
 const REDDIT_HOSTS = [
@@ -102,7 +103,11 @@ async function fetchCapped(url, accept, maxBytes) {
       method: 'GET',
       redirect: 'follow',
       referrerPolicy: 'no-referrer',
-      credentials: 'omit',
+      // Send the user's own Reddit cookies (same IP + same session as their browser tab).
+      // Reddit 403s anonymous/cookieless `.json` access for many IPs; this makes the request
+      // behave exactly like the user opening the `.json` URL in a tab. First-party only —
+      // cookies go solely to the target host (Reddit / its CDNs), never to us.
+      credentials: 'include',
       cache: 'no-store',
       headers: accept ? { accept } : undefined,
       signal: ac.signal,
@@ -137,7 +142,14 @@ async function handle(msg, sender) {
 
   try {
     if (op === 'fetchJson') {
-      const r = await fetchCapped(target, 'application/json', MAX_JSON_BYTES);
+      let r = await fetchCapped(target, 'application/json', MAX_JSON_BYTES);
+      // If Reddit blocks www.reddit.com (403/429), try old.reddit.com once — it is frequently
+      // more lenient for the public `.json` endpoints.
+      if (r.ok && !r.httpOk && target.startsWith('https://www.reddit.com/')) {
+        const alt = target.replace('https://www.reddit.com/', 'https://old.reddit.com/');
+        const r2 = await fetchCapped(alt, 'application/json', MAX_JSON_BYTES);
+        if (r2.ok && r2.httpOk) r = r2;
+      }
       if (!r.ok) return r;
       const body = new TextDecoder('utf-8').decode(r.buf);
       return { ok: true, httpOk: r.httpOk, status: r.httpStatus, body, bytes: r.buf.byteLength };

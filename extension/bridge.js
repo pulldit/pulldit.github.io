@@ -15,7 +15,7 @@
  */
 (function () {
   const TAG = '__pulldit';
-  const VERSION = '1.0.0';
+  const VERSION = '1.0.1';
 
   function post(obj) {
     try {
