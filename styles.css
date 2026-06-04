@@ -144,7 +144,6 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .inline-input { margin-top: 0.6rem; max-width: 420px; }
 
 /* Statistics */
-.statsbox { margin: 0 0 1rem; }
 .statsbox-title { font-size: 0.95rem; font-weight: 700; margin: 0 0 0.6rem; display: flex; align-items: center; gap: 0.5rem; }
 .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 0.6rem; }
 .stat { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0.55rem 0.7rem; }
@@ -197,6 +196,7 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 
 /* Status + about */
 .status { min-height: 1.4em; text-align: center; color: var(--text-dim); }
+.status:empty { display: none; }
 .status.error { color: var(--danger); }
 .status.ok { color: var(--safe); }
 .about h2, .disclaimer h2 { margin-top: 0; }
