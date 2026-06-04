@@ -7,6 +7,8 @@ import {
   classifyError,
   aggregateDownload,
   summarizeItems,
+  accumulateFetchStats,
+  emptyFetchTotals,
 } from '../src/stats.js';
 
 describe('formatBytes', () => {
@@ -91,6 +93,48 @@ describe('aggregateDownload', () => {
   it('handles empty input', () => {
     const a = aggregateDownload([]);
     expect(a).toMatchObject({ total: 0, success: 0, failed: 0, totalBytes: 0, avgSpeed: 0 });
+  });
+});
+
+describe('accumulateFetchStats', () => {
+  const s1 = {
+    status: 'success', elapsedMs: 100, bytes: 1000,
+    postsScanned: 10, postsWithMedia: 6, dropped: 4, galleries: 1, found: 8,
+    byType: { image: 5, gif: 2, video: 1 }, bySource: { reddit: 6, imgur: 2 }, nsfw: 1,
+  };
+  const s2 = {
+    status: 'success', elapsedMs: 50, bytes: 500,
+    postsScanned: 5, postsWithMedia: 3, dropped: 2, galleries: 0, found: 4,
+    byType: { image: 1, gif: 1, video: 2 }, bySource: { reddit: 3, imgur: 1 }, nsfw: 0,
+  };
+
+  it('starts from a zeroed total', () => {
+    expect(emptyFetchTotals()).toMatchObject({ fetches: 0, found: 0, bytes: 0, totalMs: 0 });
+  });
+
+  it('SUMS successive fetches instead of overwriting', () => {
+    const a = accumulateFetchStats(undefined, s1);
+    expect(a).toMatchObject({ fetches: 1, successes: 1, found: 8, images: 5, bytes: 1000, totalMs: 100, postsScanned: 10 });
+    const b = accumulateFetchStats(a, s2);
+    expect(b).toMatchObject({
+      fetches: 2, successes: 2, failures: 0,
+      found: 12, images: 6, gifs: 3, videos: 3, reddit: 9, imgur: 3, nsfw: 1,
+      postsScanned: 15, postsWithMedia: 9, dropped: 6, galleries: 1,
+      bytes: 1500, totalMs: 150,
+    });
+    // prev must not be mutated
+    expect(a.fetches).toBe(1);
+  });
+
+  it('counts failures and timeouts without adding media counters', () => {
+    let t = accumulateFetchStats(undefined, { status: 'failed', elapsedMs: 20, error: 'boom' });
+    t = accumulateFetchStats(t, { status: 'timeout', elapsedMs: 25000 });
+    expect(t).toMatchObject({ fetches: 2, successes: 0, failures: 1, timeouts: 1, found: 0, totalMs: 25020 });
+  });
+
+  it('coerces a malformed persisted total back to numbers', () => {
+    const t = accumulateFetchStats({ fetches: 'x', found: undefined, bytes: null }, s1);
+    expect(t).toMatchObject({ fetches: 1, found: 8, bytes: 1000 });
   });
 });
 

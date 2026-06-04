@@ -8,6 +8,7 @@ import { downloadSingle, downloadZip } from './download.js';
 import { applyFilters, normalizeFilters } from './filters.js';
 import {
   formatBytes, formatDuration, formatSpeed, formatPercent, classifyError, aggregateDownload,
+  accumulateFetchStats,
 } from './stats.js';
 import { capList, describeEntry, HISTORY_KEY } from './history.js';
 
@@ -327,7 +328,7 @@ async function onSearch(event) {
     selected.clear();
     discarded.clear();
     showDiscarded = false;
-    renderFetchStats({ status: 'success', elapsedMs, bytes: meta.bytes, ...stats });
+    recordFetchStats({ status: 'success', elapsedMs, bytes: meta.bytes, ...stats });
     refreshView();
     addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: items.length });
     if (items.length === 0) {
@@ -338,7 +339,7 @@ async function onSearch(event) {
   } catch (err) {
     const elapsedMs = perf() - t0;
     const reason = classifyError(err?.message || err);
-    renderFetchStats({
+    recordFetchStats({
       status: reason === 'timeout' ? 'timeout' : 'failed',
       elapsedMs,
       bytes: meta.bytes,
@@ -366,8 +367,7 @@ function handleFetchError(err) {
 
 /* ----------------------------- statistics rendering ----------------------------- */
 
-function buildStatCells(container, entries) {
-  container.replaceChildren();
+function makeStatGrid(entries) {
   const grid = document.createElement('div');
   grid.className = 'stat-grid';
   for (const e of entries) {
@@ -383,7 +383,29 @@ function buildStatCells(container, entries) {
     cell.appendChild(value);
     grid.appendChild(cell);
   }
-  container.appendChild(grid);
+  return grid;
+}
+
+/** Render a single flat grid of stat cells (download stats). */
+function buildStatCells(container, entries) {
+  container.replaceChildren(makeStatGrid(entries));
+}
+
+/** Render one or more titled groups, each its own grid (fetch stats: last + cumulative). */
+function buildStatGroups(container, groups) {
+  container.replaceChildren();
+  for (const g of groups) {
+    const wrap = document.createElement('div');
+    wrap.className = 'stat-group';
+    if (g.title) {
+      const h = document.createElement('div');
+      h.className = 'stat-group-title';
+      h.textContent = g.title;
+      wrap.appendChild(h);
+    }
+    wrap.appendChild(makeStatGrid(g.entries));
+    container.appendChild(wrap);
+  }
 }
 
 function setBadge(id, text, kind) {
@@ -400,36 +422,73 @@ function renderFetchStatsIdle() {
   ]);
 }
 
-function renderFetchStats(s) {
-  const entries = [];
-  if (s.status === 'success') entries.push({ label: 'Status', value: 'Success', kind: 'good' });
-  else if (s.status === 'timeout') entries.push({ label: 'Status', value: 'Timeout', kind: 'bad' });
-  else entries.push({ label: 'Status', value: 'Failed', kind: 'bad' });
+/**
+ * Render the fetch-statistics panel. Shows the LAST fetch plus, when available, CUMULATIVE
+ * totals summed across every fetch (persisted, never overwritten).
+ * @param {object} s     the last fetch result
+ * @param {object} [cum] cumulative totals (from accumulateFetchStats)
+ */
+function renderFetchStats(s, cum) {
+  const last = [];
+  if (s.status === 'success') last.push({ label: 'Status', value: 'Success', kind: 'good' });
+  else if (s.status === 'timeout') last.push({ label: 'Status', value: 'Timeout', kind: 'bad' });
+  else last.push({ label: 'Status', value: 'Failed', kind: 'bad' });
 
-  entries.push({ label: 'Time', value: formatDuration(s.elapsedMs) });
-  if (Number.isFinite(s.bytes)) entries.push({ label: 'Listing size', value: formatBytes(s.bytes) });
+  last.push({ label: 'Time', value: formatDuration(s.elapsedMs) });
+  if (Number.isFinite(s.bytes)) last.push({ label: 'Listing size', value: formatBytes(s.bytes) });
 
   if (s.status === 'success') {
-    entries.push({ label: 'Posts scanned', value: String(s.postsScanned ?? 0) });
-    entries.push({ label: 'With media', value: String(s.postsWithMedia ?? 0) });
-    entries.push({ label: 'No media', value: String(s.dropped ?? 0) });
-    entries.push({ label: 'Galleries', value: String(s.galleries ?? 0) });
-    entries.push({ label: 'Media found', value: String(s.found ?? 0), kind: 'accent' });
-    entries.push({ label: 'Images', value: String(s.byType?.image ?? 0) });
-    entries.push({ label: 'GIFs', value: String(s.byType?.gif ?? 0) });
-    entries.push({ label: 'Videos', value: String(s.byType?.video ?? 0) });
-    entries.push({ label: 'Reddit', value: String(s.bySource?.reddit ?? 0) });
-    entries.push({ label: 'imgur', value: String(s.bySource?.imgur ?? 0) });
-    if (s.nsfw) entries.push({ label: 'NSFW', value: String(s.nsfw), kind: 'warn' });
-    if (s.capped) entries.push({ label: 'Capped at', value: String(LIMITS.maxItems), kind: 'warn' });
+    last.push({ label: 'Posts scanned', value: String(s.postsScanned ?? 0) });
+    last.push({ label: 'With media', value: String(s.postsWithMedia ?? 0) });
+    last.push({ label: 'No media', value: String(s.dropped ?? 0) });
+    last.push({ label: 'Galleries', value: String(s.galleries ?? 0) });
+    last.push({ label: 'Media found', value: String(s.found ?? 0), kind: 'accent' });
+    last.push({ label: 'Images', value: String(s.byType?.image ?? 0) });
+    last.push({ label: 'GIFs', value: String(s.byType?.gif ?? 0) });
+    last.push({ label: 'Videos', value: String(s.byType?.video ?? 0) });
+    last.push({ label: 'Reddit', value: String(s.bySource?.reddit ?? 0) });
+    last.push({ label: 'imgur', value: String(s.bySource?.imgur ?? 0) });
+    if (s.nsfw) last.push({ label: 'NSFW', value: String(s.nsfw), kind: 'warn' });
+    if (s.capped) last.push({ label: 'Capped at', value: String(LIMITS.maxItems), kind: 'warn' });
   } else if (s.error) {
-    entries.push({ label: 'Error', value: s.error, wide: true });
+    last.push({ label: 'Error', value: s.error, wide: true });
   }
+
+  const groups = [{ title: 'Last fetch', entries: last }];
+
+  if (cum && cum.fetches > 0) {
+    const c = [];
+    c.push({ label: 'Fetches', value: String(cum.fetches) });
+    c.push({ label: 'Successful', value: String(cum.successes), kind: 'good' });
+    const failed = cum.failures + cum.timeouts;
+    if (failed) c.push({ label: 'Failed', value: String(failed), kind: 'bad' });
+    c.push({ label: 'Posts scanned', value: String(cum.postsScanned) });
+    c.push({ label: 'With media', value: String(cum.postsWithMedia) });
+    c.push({ label: 'No media', value: String(cum.dropped) });
+    c.push({ label: 'Galleries', value: String(cum.galleries) });
+    c.push({ label: 'Media found', value: String(cum.found), kind: 'accent' });
+    c.push({ label: 'Images', value: String(cum.images) });
+    c.push({ label: 'GIFs', value: String(cum.gifs) });
+    c.push({ label: 'Videos', value: String(cum.videos) });
+    c.push({ label: 'Reddit', value: String(cum.reddit) });
+    c.push({ label: 'imgur', value: String(cum.imgur) });
+    if (cum.nsfw) c.push({ label: 'NSFW', value: String(cum.nsfw), kind: 'warn' });
+    c.push({ label: 'Total data', value: formatBytes(cum.bytes) });
+    c.push({ label: 'Total time', value: formatDuration(cum.totalMs) });
+    groups.push({ title: `All time · ${cum.fetches} fetch${cum.fetches === 1 ? '' : 'es'}`, entries: c });
+  }
+
   if (s.status === 'success') setBadge('fetch-stats-badge', `${s.found ?? 0} found`, 'good');
   else if (s.status === 'timeout') setBadge('fetch-stats-badge', 'Timeout', 'bad');
   else setBadge('fetch-stats-badge', 'Failed', 'bad');
-  buildStatCells($('fetch-stats'), entries);
-  saveStatsPatch({ fetch: s });
+  buildStatGroups($('fetch-stats'), groups);
+}
+
+/** Record a fetch result into persisted cumulative totals and render the panel. */
+function recordFetchStats(sample) {
+  const cum = accumulateFetchStats(loadSavedStats().fetchCum, sample);
+  saveStatsPatch({ fetch: sample, fetchCum: cum });
+  renderFetchStats(sample, cum);
 }
 
 function renderDownloadStats(a, opts = {}) {
@@ -867,7 +926,7 @@ function init() {
     $(id).addEventListener('change', saveOptions);
   }
   const savedStats = loadSavedStats();
-  if (savedStats.fetch) renderFetchStats(savedStats.fetch);
+  if (savedStats.fetch) renderFetchStats(savedStats.fetch, savedStats.fetchCum);
   else renderFetchStatsIdle();
   if (savedStats.download && savedStats.download.a) {
     renderDownloadStats(savedStats.download.a, { elapsedMs: savedStats.download.elapsedMs });

@@ -16,16 +16,16 @@
 ## Fix 1 — Gap between summary title and content in stats panels
 - [x] `#fetch-stats` / `#download-stats` have no top margin (proxy/history panels do) → add `margin-top`
 - [x] Bump cache-bust `?v=4` → `?v=5` (styles.css + app.js)
-- [ ] build + commit
+- [x] build + commit
 
 ## Fix 2 — Fetch statistics must accumulate (sum) + persist, not overwrite
-- [ ] Add pure `accumulateFetchStats(prev, sample)` + `emptyFetchTotals()` to `stats.js`
-- [ ] Unit tests for accumulation (success sums, failure/timeout counters, no overwrite)
-- [ ] Persist cumulative totals under `fetchCum` (alongside last-fetch `fetch`) in `app.js`
-- [ ] Render two grouped sections: "Last fetch" + "All time · N fetches" (`buildStatGroups`)
-- [ ] CSS for `.stat-group` / `.stat-group-title`
-- [ ] Restore cumulative on page load; clear with the existing stats clear
-- [ ] build + commit
+- [x] Add pure `accumulateFetchStats(prev, sample)` + `emptyFetchTotals()` to `stats.js`
+- [x] Unit tests for accumulation (success sums, failure/timeout counters, no overwrite)
+- [x] Persist cumulative totals under `fetchCum` (alongside last-fetch `fetch`) in `app.js`
+- [x] Render two grouped sections: "Last fetch" + "All time · N fetches" (`buildStatGroups`)
+- [x] CSS for `.stat-group` / `.stat-group-title`
+- [x] Restore cumulative on page load; clear with the existing stats clear
+- [x] build + commit
 
 ## Fix 3 — Proxy modes actually work (or fail honestly)
 - [ ] Replace `PUBLIC_PROXIES`: drop dead corsproxy.io + thingproxy; keep allorigins (`/raw`) + codetabs

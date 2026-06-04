@@ -90,6 +90,65 @@ export function aggregateDownload(results, wallMs) {
   return out;
 }
 
+/** Coerce any value to a finite non-negative-safe number (NaN/undefined -> 0). */
+function num(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+/**
+ * A zeroed cumulative fetch-totals object. Every key is a number so accumulation is safe
+ * even when starting from nothing or from a partially-shaped persisted value.
+ */
+export function emptyFetchTotals() {
+  return {
+    fetches: 0, successes: 0, failures: 0, timeouts: 0,
+    postsScanned: 0, postsWithMedia: 0, dropped: 0, galleries: 0,
+    found: 0, images: 0, gifs: 0, videos: 0, reddit: 0, imgur: 0, nsfw: 0,
+    bytes: 0, totalMs: 0,
+  };
+}
+
+/**
+ * Fold one fetch result (the same shape passed to the fetch-stats renderer) into running
+ * cumulative totals. Pure — returns a NEW totals object; never mutates `prev`. This is what
+ * makes the fetch statistics SUM across fetches instead of overwriting the previous one.
+ * @param {object|undefined|null} prev previous cumulative totals (any partial shape ok)
+ * @param {{ status?: string, elapsedMs?: number, bytes?: number, postsScanned?: number,
+ *           postsWithMedia?: number, dropped?: number, galleries?: number, found?: number,
+ *           byType?: { image?: number, gif?: number, video?: number },
+ *           bySource?: { reddit?: number, imgur?: number }, nsfw?: number }} sample
+ */
+export function accumulateFetchStats(prev, sample) {
+  const t = { ...emptyFetchTotals(), ...(prev && typeof prev === 'object' ? prev : {}) };
+  // Guard against non-numeric persisted values sneaking in via the spread above.
+  for (const k of Object.keys(emptyFetchTotals())) t[k] = num(t[k]);
+
+  const s = sample || {};
+  t.fetches += 1;
+  if (s.status === 'success') t.successes += 1;
+  else if (s.status === 'timeout') t.timeouts += 1;
+  else t.failures += 1;
+
+  t.totalMs += num(s.elapsedMs);
+  t.bytes += num(s.bytes);
+
+  if (s.status === 'success') {
+    t.postsScanned += num(s.postsScanned);
+    t.postsWithMedia += num(s.postsWithMedia);
+    t.dropped += num(s.dropped);
+    t.galleries += num(s.galleries);
+    t.found += num(s.found);
+    t.images += num(s.byType?.image);
+    t.gifs += num(s.byType?.gif);
+    t.videos += num(s.byType?.video);
+    t.reddit += num(s.bySource?.reddit);
+    t.imgur += num(s.bySource?.imgur);
+    t.nsfw += num(s.nsfw);
+  }
+  return t;
+}
+
 /**
  * Summarize a set of media items by type and source.
  * @param {Array<object>} items
