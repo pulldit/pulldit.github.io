@@ -29,8 +29,8 @@ public release.
 - [x] 3.3 `test/proxy.test.js` — proxied URL building per mode + validation
 
 ## Phase 4 — Download + ZIP
-- [ ] 4.1 `src/download.js` — downloadSingle (named via proxy, else open) via FileSaver
-- [ ] 4.2 `src/download.js` — downloadZip (JSZip, progress, per-file error tolerance)
+- [x] 4.1 `src/download.js` — downloadSingle (named via proxy, else open) via FileSaver
+- [x] 4.2 `src/download.js` — downloadZip (JSZip, progress, per-file error tolerance)
 
 ## Phase 5 — UI + branding
 - [ ] 5.1 `assets/logo.svg` + `assets/favicon.svg` — custom Reddit-downloader logo
