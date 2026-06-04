@@ -19,9 +19,12 @@ const FILTERS_KEY = 'rd.filters.v1';
 const OPTIONS_KEY = 'rd.options.v1';
 const STATS_KEY = 'rd.stats.v1';
 const UI_KEY = 'rd.ui.v1';
-const COLLAPSIBLE_IDS = ['proxy-panel', 'fetch-stats-panel', 'download-stats-panel', 'history-panel'];
+const LINKS_KEY = 'rd.links.v1';
+const MAX_LINKS = 50;
+const COLLAPSIBLE_IDS = ['links-panel', 'proxy-panel', 'fetch-stats-panel', 'download-stats-panel', 'history-panel'];
 const STORAGE_KEYS = {
   history: HISTORY_KEY,
+  links: LINKS_KEY,
   stats: STATS_KEY,
   settings: SETTINGS_KEY,
   filters: FILTERS_KEY,
@@ -265,6 +268,94 @@ function itemTitle(id) {
   return it ? it.title || it.id : id;
 }
 
+/* ----------------------------- link history ----------------------------- */
+
+function loadLinks() {
+  try {
+    const a = JSON.parse(localStorage.getItem(LINKS_KEY) || '[]');
+    return Array.isArray(a) ? a.filter((l) => l && typeof l.input === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+let links = loadLinks();
+
+function saveLinks() {
+  try {
+    localStorage.setItem(LINKS_KEY, JSON.stringify(links));
+  } catch {
+    /* non-fatal */
+  }
+}
+
+/** Add (or move to front) a fetched/saved link. Newest first; de-duplicated by input. */
+function addLink(input, label) {
+  const value = String(input || '').trim();
+  if (!value) return;
+  links = links.filter((l) => l.input !== value);
+  links.unshift({ input: value, label: label || value, t: Date.now() });
+  if (links.length > MAX_LINKS) links = links.slice(0, MAX_LINKS);
+  saveLinks();
+  renderLinks();
+}
+
+function removeLink(input) {
+  links = links.filter((l) => l.input !== input);
+  saveLinks();
+  renderLinks();
+}
+
+/** Load a saved link into the query box and fetch it. */
+function useLink(input) {
+  $('query').value = input;
+  $('search-form').requestSubmit();
+}
+
+function renderLinks() {
+  const list = $('links-list');
+  list.replaceChildren();
+  $('links-count').textContent = String(links.length);
+  if (links.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'history-empty';
+    empty.textContent = 'No saved links yet — fetch something or use “+ Add current link”.';
+    list.appendChild(empty);
+    return;
+  }
+  links.forEach((l, i) => {
+    const li = document.createElement('li');
+    li.className = 'link-item' + (i === 0 ? ' latest' : '');
+    const use = document.createElement('button');
+    use.type = 'button';
+    use.className = 'link-use';
+    use.title = 'Fetch ' + l.input;
+    if (i === 0) {
+      const tag = document.createElement('span');
+      tag.className = 'link-latest';
+      tag.textContent = 'latest';
+      use.appendChild(tag);
+    }
+    const text = document.createElement('span');
+    text.className = 'link-text';
+    text.textContent = l.label || l.input;
+    use.appendChild(text);
+    use.addEventListener('click', () => useLink(l.input));
+
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'link-del';
+    del.textContent = '✕';
+    del.title = 'Remove';
+    del.setAttribute('aria-label', 'Remove ' + (l.label || l.input));
+    del.addEventListener('click', () => removeLink(l.input));
+
+    li.appendChild(use);
+    li.appendChild(del);
+    list.appendChild(li);
+  });
+}
+
 // Filter groups: each must keep at least one option enabled, otherwise the group hides every
 // item (e.g. both sources off → nothing shows, even with media found).
 const TYPE_FILTERS = ['image', 'gif', 'video'];
@@ -356,7 +447,8 @@ async function onSearch(event) {
   event.preventDefault();
   if (busy) return;
 
-  const parsed = parseInput($('query').value);
+  const rawInput = $('query').value.trim();
+  const parsed = parseInput(rawInput);
   if (!parsed.ok) {
     setStatus('Could not understand that input: ' + parsed.reason, 'error');
     return;
@@ -376,6 +468,7 @@ async function onSearch(event) {
     showDiscarded = false;
     refreshView();
     addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: 1 });
+    addLink(rawInput, parsed.label);
     setStatus(reportFound(1), keptItems().length ? 'ok' : 'error');
     return;
   }
@@ -402,6 +495,7 @@ async function onSearch(event) {
     recordFetchStats({ status: 'success', elapsedMs, bytes: meta.bytes, ...stats });
     refreshView();
     addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: items.length });
+    addLink(rawInput, parsed.label);
     setStatus(reportFound(items.length), items.length === 0 ? '' : (keptItems().length ? 'ok' : 'error'));
   } catch (err) {
     const elapsedMs = perf() - t0;
@@ -930,7 +1024,7 @@ function onModalKeydown(e) {
 
 function syncClearSelectAll() {
   const all = $('clear-all-opt').checked;
-  for (const id of ['clear-history-opt', 'clear-stats-opt', 'clear-settings-opt', 'clear-filters-opt', 'clear-options-opt']) {
+  for (const id of ['clear-history-opt', 'clear-links-opt', 'clear-stats-opt', 'clear-settings-opt', 'clear-filters-opt', 'clear-options-opt']) {
     $(id).checked = all;
   }
 }
@@ -938,6 +1032,7 @@ function syncClearSelectAll() {
 function performClear() {
   const sel = {
     history: $('clear-history-opt').checked,
+    links: $('clear-links-opt').checked,
     stats: $('clear-stats-opt').checked,
     settings: $('clear-settings-opt').checked,
     filters: $('clear-filters-opt').checked,
@@ -956,6 +1051,10 @@ function performClear() {
   if (sel.history) {
     activity = [];
     renderHistory();
+  }
+  if (sel.links) {
+    links = [];
+    renderLinks();
   }
   if (sel.stats) {
     renderFetchStatsIdle();
@@ -1055,6 +1154,16 @@ function init() {
     renderDownloadStats(savedStats.download.a, { elapsedMs: savedStats.download.elapsedMs });
   }
   renderHistory();
+  renderLinks();
+  $('link-add-btn').addEventListener('click', () => {
+    const value = $('query').value.trim();
+    if (!value) {
+      setStatus('Type a link in the box first, then “Add current link”.', '');
+      return;
+    }
+    const p = parseInput(value);
+    addLink(value, p.ok ? p.label : value);
+  });
   applyUiState();
   for (const id of COLLAPSIBLE_IDS) {
     const el = $(id);

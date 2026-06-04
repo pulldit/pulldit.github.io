@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=13" />
+  <link rel="stylesheet" href="styles.css?v=14" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -98,6 +98,18 @@
         <button id="fetch-btn" type="submit" class="btn primary">Fetch media</button>
       </div>
     </form>
+
+    <details id="links-panel" class="panel collapsible">
+      <summary>
+        <span class="summary-title links-title">Link history</span>
+        <span id="links-count" class="badge">0</span>
+      </summary>
+      <div class="links-toolbar">
+        <button id="link-add-btn" type="button" class="btn ghost">+ Add current link</button>
+        <span class="hint links-hint">Click a saved link to re-fetch it. Newest is your latest fetch.</span>
+      </div>
+      <ul id="links-list" class="links-list"></ul>
+    </details>
 
     <section class="panel filters-panel">
       <div class="filters" id="filters">
@@ -288,6 +300,7 @@
       <p class="modal-desc">Choose what to remove from this browser. This cannot be undone.</p>
       <ul class="modal-options">
         <li><label class="check-row"><input type="checkbox" id="clear-history-opt" checked /><span><strong>History</strong><small>Activity log</small></span></label></li>
+        <li><label class="check-row"><input type="checkbox" id="clear-links-opt" /><span><strong>Link history</strong><small>Saved &amp; recent links</small></span></label></li>
         <li><label class="check-row"><input type="checkbox" id="clear-stats-opt" /><span><strong>Statistics</strong><small>Last fetch &amp; download stats</small></span></label></li>
         <li><label class="check-row"><input type="checkbox" id="clear-settings-opt" /><span><strong>Proxy settings</strong><small>Mode, worker URL, public proxy</small></span></label></li>
         <li><label class="check-row"><input type="checkbox" id="clear-filters-opt" /><span><strong>Filters</strong><small>Type &amp; source toggles</small></span></label></li>
@@ -335,6 +348,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=13"></script>
+  <script type="module" src="src/app.js?v=14"></script>
 </body>
 </html>
