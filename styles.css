@@ -309,6 +309,16 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .footer-links a { text-decoration: none; }
 .footer-links a:hover { text-decoration: underline; }
 .footer-note { margin: 0; flex: 1 1 100%; font-size: 0.78rem; opacity: 0.9; }
+/* Local two-tone status pills (shields-style) — no external images, CSP stays strict. */
+.footer-badges { display: inline-flex; gap: 0.45rem; flex-wrap: wrap; justify-content: center; }
+.fbadge { display: inline-flex; align-items: stretch; border-radius: 5px; overflow: hidden;
+  font-size: 0.68rem; font-weight: 700; text-decoration: none; line-height: 1.6;
+  border: 1px solid var(--border); }
+.fbadge:hover { filter: brightness(1.12); }
+.fbadge-k { padding: 0 0.4rem; background: #30363d; color: #e6edf3; }
+.fbadge-v { padding: 0 0.4rem; color: #fff; }
+.fbadge.ok .fbadge-v { background: var(--safe); }
+.fbadge.license .fbadge-v { background: #0a7ea4; }
 
 @media (max-width: 560px) {
   .brand-text h1 { font-size: 1.25rem; }

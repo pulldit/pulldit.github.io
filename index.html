@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=18" />
+  <link rel="stylesheet" href="styles.css?v=19" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -344,8 +344,21 @@
         <a href="https://github.com/pulldit/pulldit.github.io" rel="noopener noreferrer">GitHub</a>
         <a href="#about">About</a>
         <a href="https://github.com/pulldit/pulldit.github.io/tree/main/extension" rel="noopener noreferrer">Extension</a>
-        <a href="https://github.com/pulldit/pulldit.github.io/blob/main/LICENSE" rel="noopener noreferrer">MIT License</a>
         <a href="#about">Disclaimer</a>
+      </nav>
+      <nav class="footer-badges" aria-label="Project status">
+        <a class="fbadge license" href="https://github.com/pulldit/pulldit.github.io/blob/main/LICENSE" rel="noopener noreferrer">
+          <span class="fbadge-k">License</span><span class="fbadge-v">MIT</span>
+        </a>
+        <a class="fbadge ok" href="https://github.com/pulldit/pulldit.github.io/actions/workflows/ci.yml" rel="noopener noreferrer">
+          <span class="fbadge-k">CI</span><span class="fbadge-v">passing</span>
+        </a>
+        <a class="fbadge ok" href="https://github.com/pulldit/pulldit.github.io/actions/workflows/codeql.yml" rel="noopener noreferrer">
+          <span class="fbadge-k">CodeQL</span><span class="fbadge-v">passing</span>
+        </a>
+        <a class="fbadge ok" href="https://github.com/pulldit/pulldit.github.io/actions/workflows/deploy.yml" rel="noopener noreferrer">
+          <span class="fbadge-k">Deploy</span><span class="fbadge-v">live</span>
+        </a>
       </nav>
       <p class="footer-note">
         Open-source · Runs entirely in your browser · No account, no tracking, no server.
@@ -412,6 +425,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=18"></script>
+  <script type="module" src="src/app.js?v=19"></script>
 </body>
 </html>
