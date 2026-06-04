@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=26" />
+  <link rel="stylesheet" href="styles.css?v=27" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -216,6 +216,14 @@
           <span class="field-label">Max history shown</span>
           <input id="adv-history-limit" type="number" min="10" max="1000" step="10" value="100" />
         </label>
+        <label class="field compact">
+          <span class="field-label">Max items (pagination)</span>
+          <input id="adv-max-items" type="number" min="100" max="2000" step="50" value="500" />
+        </label>
+        <label class="field compact">
+          <span class="field-label">Page request delay (ms)</span>
+          <input id="adv-page-delay" type="number" min="0" max="10000" step="50" value="400" />
+        </label>
       </div>
       <p class="hint">A download delay (rate limit) helps avoid Reddit/CDN throttling on big batches.</p>
       <ul class="adv-toggles">
@@ -223,6 +231,7 @@
         <li><label class="check-row"><input type="checkbox" id="adv-count-discarded" /><span><strong>Count discarded as downloaded</strong><small>Items you discard also count as “seen” and get skipped next time.</small></span></label></li>
         <li><label class="check-row"><input type="checkbox" id="adv-autosave-links" checked /><span><strong>Auto-save fetched links</strong><small>Remember every link you fetch in the Link history. When on, the “+ Add current link” button is disabled (it would be redundant).</small></span></label></li>
         <li><label class="check-row"><input type="checkbox" id="adv-history-overwrite" checked /><span><strong>Auto-overwrite oldest history</strong><small>On: keep only the newest “Max history shown” entries (oldest are overwritten). Off: keep everything — use “Show more” to reveal older entries.</small></span></label></li>
+        <li><label class="check-row"><input type="checkbox" id="adv-auto-paginate" checked /><span><strong>Auto-paginate past 100</strong><small>When the Limit is above 100, fetch several listing pages (Reddit returns max 100 per request) up to “Max items”, waiting the page-request delay between calls. Off: a single request capped at 100.</small></span></label></li>
         <li><label class="check-row"><input type="checkbox" id="adv-validate-magic" checked /><span><strong>Check 1 — verify file signature</strong><small>Before saving or zipping, confirm each download’s magic bytes are genuine image/video and reject mislabeled payloads — HTML error/“removed”/rate-limit pages, executables, archives, scripts. Pure &amp; near-instant.</small></span></label></li>
         <li><label class="check-row"><input type="checkbox" id="adv-validate-decode" checked /><span><strong>Check 2 — decode-probe uncertain files</strong><small>Only active when Check 1 is on. For files with no known signature, actually decode them to decide (slower, frees memory after each) — catches corrupt or disguised media. Disabled when Check 1 is off.</small></span></label></li>
       </ul>
@@ -436,6 +445,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=26"></script>
+  <script type="module" src="src/app.js?v=27"></script>
 </body>
 </html>

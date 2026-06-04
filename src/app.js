@@ -178,6 +178,7 @@ const ADV_DEFAULTS = Object.freeze({
   autoSaveLinks: true,
   historyLimit: MAX_HISTORY, historyAutoOverwrite: true,
   validateMagic: true, validateDecode: true,
+  autoPaginate: true, maxItems: 500, pageDelayMs: 400,
 });
 
 function clampInt(v, min, max, dflt) {
@@ -206,6 +207,9 @@ function loadAdvanced() {
     historyAutoOverwrite: typeof raw.historyAutoOverwrite === 'boolean' ? raw.historyAutoOverwrite : ADV_DEFAULTS.historyAutoOverwrite,
     validateMagic: typeof raw.validateMagic === 'boolean' ? raw.validateMagic : ADV_DEFAULTS.validateMagic,
     validateDecode: typeof raw.validateDecode === 'boolean' ? raw.validateDecode : ADV_DEFAULTS.validateDecode,
+    autoPaginate: typeof raw.autoPaginate === 'boolean' ? raw.autoPaginate : ADV_DEFAULTS.autoPaginate,
+    maxItems: clampInt(raw.maxItems, 100, 2000, ADV_DEFAULTS.maxItems),
+    pageDelayMs: clampInt(raw.pageDelayMs, 0, 10000, ADV_DEFAULTS.pageDelayMs),
   };
 }
 
@@ -231,8 +235,12 @@ function applyAdvancedToUi() {
   $('adv-history-overwrite').checked = advanced.historyAutoOverwrite;
   $('adv-validate-magic').checked = advanced.validateMagic;
   $('adv-validate-decode').checked = advanced.validateDecode;
+  $('adv-auto-paginate').checked = advanced.autoPaginate;
+  $('adv-max-items').value = String(advanced.maxItems);
+  $('adv-page-delay').value = String(advanced.pageDelayMs);
   syncLinkAddButton();
   syncValidateUi();
+  syncLimitField();
 }
 
 /** Check 2 (decode) is only meaningful while Check 1 (magic) is on — disable it otherwise. */
@@ -242,6 +250,34 @@ function syncValidateUi() {
   decodeEl.disabled = !advanced.validateMagic;
   const row = decodeEl.closest('.check-row');
   if (row) row.classList.toggle('is-disabled', !advanced.validateMagic);
+}
+
+/** Reflect the pagination state onto the Limit field (its max) and the ">100" hint line. */
+function syncLimitField() {
+  const limitEl = $('limit');
+  if (!limitEl) return;
+  limitEl.max = String(advanced.autoPaginate ? advanced.maxItems : 100);
+  const hint = $('pagination-hint');
+  if (!hint) return;
+  const val = Number(limitEl.value) || 0;
+  if (val <= 100) {
+    hint.hidden = true;
+    return;
+  }
+  if (advanced.autoPaginate) {
+    const target = Math.min(val, advanced.maxItems);
+    const reqs = Math.ceil(target / 100);
+    hint.textContent =
+      `Auto-pagination is on — fetching up to ${target} items across ~${reqs} request${reqs === 1 ? '' : 's'} ` +
+      '(Reddit returns max 100 per request). Cap & delay are in Advanced settings.';
+    hint.className = 'hint pagination-hint';
+  } else {
+    hint.textContent =
+      'Auto-pagination is off — Reddit caps a single request at 100, so only the first 100 will be fetched. ' +
+      'Enable it in Advanced settings to fetch more.';
+    hint.className = 'hint pagination-hint warn';
+  }
+  hint.hidden = false;
 }
 
 /** The manual "+ Add current link" button is redundant while auto-save is on, so disable it. */
@@ -267,6 +303,9 @@ function readAdvancedFromUi() {
     historyAutoOverwrite: $('adv-history-overwrite').checked,
     validateMagic: $('adv-validate-magic').checked,
     validateDecode: $('adv-validate-decode').checked,
+    autoPaginate: $('adv-auto-paginate').checked,
+    maxItems: clampInt($('adv-max-items').value, 100, 2000, ADV_DEFAULTS.maxItems),
+    pageDelayMs: clampInt($('adv-page-delay').value, 0, 10000, ADV_DEFAULTS.pageDelayMs),
   };
   saveAdvanced();
   applyAdvancedToUi(); // reflect any clamped values back (also re-syncs dependent UI)
@@ -1468,7 +1507,7 @@ function init() {
     $(id).addEventListener('change', saveOptions);
   }
   applyAdvancedToUi();
-  for (const id of ['adv-delay', 'adv-timeout', 'adv-maxfile', 'adv-maxzip', 'adv-skip', 'adv-count-discarded', 'adv-autosave-links', 'adv-history-limit', 'adv-history-overwrite', 'adv-validate-magic', 'adv-validate-decode']) {
+  for (const id of ['adv-delay', 'adv-timeout', 'adv-maxfile', 'adv-maxzip', 'adv-skip', 'adv-count-discarded', 'adv-autosave-links', 'adv-history-limit', 'adv-history-overwrite', 'adv-validate-magic', 'adv-validate-decode', 'adv-auto-paginate', 'adv-max-items', 'adv-page-delay']) {
     $(id).addEventListener('change', readAdvancedFromUi);
   }
   const savedStats = loadSavedStats();
