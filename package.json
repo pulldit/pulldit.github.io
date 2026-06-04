@@ -1,6 +1,6 @@
 {
   "name": "redditdownloader",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Static, browser-only Reddit media downloader with switchable proxy modes (direct / own Cloudflare Worker / public proxy). No backend required.",
   "type": "module",
   "private": true,
