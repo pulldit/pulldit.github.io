@@ -2,7 +2,7 @@
 // textContent (never innerHTML with data), matching the strict CSP. No inline handlers.
 
 import { APP, LIMITS, DEFAULT_PUBLIC_ID } from './config.js';
-import { parseInput, buildJsonUrl, normalizeListing, singleMediaItem } from './reddit.js';
+import { parseInput, buildJsonUrl, normalizeListing, singleMediaItem, aggregatePages } from './reddit.js';
 import { fetchJson, canZip, resolveProxy, getPublicProxy, ProxyMode } from './proxy.js';
 import { detectExtension } from './bridge-client.js';
 import { downloadSingle, downloadZip } from './download.js';
@@ -722,6 +722,87 @@ function reportFound(found) {
 
 /* ----------------------------- fetching ----------------------------- */
 
+/** Simple delay used to space out paginated listing requests (dodges Reddit rate limits). */
+function delay(ms) {
+  return ms > 0 ? new Promise((r) => setTimeout(r, ms)) : Promise.resolve();
+}
+
+/**
+ * Fetch a subreddit/user listing, auto-paginating past Reddit's hard 100-per-request cap when
+ * the Limit exceeds 100 and auto-pagination is enabled. Returns the merged, de-duplicated items
+ * plus aggregated stats. `meta` is an out-param that receives { bytes, pages, partial }.
+ *
+ * - Not paginating (post page, auto-pagination off, or target ≤ 100): a single request, returned
+ *   verbatim — identical to the original behavior.
+ * - Paginating: 100 posts per page, following the `after` cursor, stopping when the requested
+ *   item count is reached, the listing ends, a page adds nothing new, or a safety page bound is
+ *   hit. A failing FIRST page is a real error; a failing LATER page yields a partial result.
+ * @param {object} parsed   parseInput result (kind subreddit|user|post)
+ * @param {{ sort?: string, time?: string }} baseOpts
+ * @param {{ bytes?: number, pages?: number, partial?: boolean }} meta
+ * @returns {Promise<{ items: Array<object>, stats: object }>}
+ */
+async function fetchListing(parsed, baseOpts, meta) {
+  const wanted = Number($('limit').value) || LIMITS.defaultListingLimit;
+  const target = Math.max(1, Math.min(wanted, advanced.maxItems));
+  const paginate =
+    advanced.autoPaginate && target > 100 && (parsed.kind === 'subreddit' || parsed.kind === 'user');
+
+  if (!paginate) {
+    const url = buildJsonUrl(parsed, { ...baseOpts, limit: Math.min(100, target) });
+    const json = await fetchJson(url, settings, { stats: meta });
+    meta.pages = 1;
+    const { items, stats } = normalizeListing(json);
+    return { items, stats };
+  }
+
+  const pages = [];
+  const seen = new Set();
+  let dedupCount = 0;
+  let after = null;
+  let pageCount = 0;
+  let totalBytes = 0;
+  const maxPages = Math.min(40, Math.ceil(target / 100) + 5); // safety bound for sparse listings
+
+  for (;;) {
+    const url = buildJsonUrl(parsed, { ...baseOpts, limit: 100, after });
+    const pmeta = {};
+    let json;
+    try {
+      json = await fetchJson(url, settings, { stats: pmeta });
+    } catch (err) {
+      if (pages.length === 0) throw err; // first page failed → surface the real error
+      meta.partial = true; // a later page failed → keep what we already collected
+      break;
+    }
+    pageCount += 1;
+    if (Number.isFinite(pmeta.bytes)) totalBytes += pmeta.bytes;
+    const norm = normalizeListing(json);
+    pages.push(norm);
+    after = norm.after;
+    let fresh = 0;
+    for (const it of norm.items) {
+      const key = it && it.id != null ? it.id : it;
+      if (!seen.has(key)) {
+        seen.add(key);
+        fresh += 1;
+      }
+    }
+    dedupCount += fresh;
+    setStatus(`Fetching ${parsed.label}… page ${pageCount}, ${dedupCount} item${dedupCount === 1 ? '' : 's'}`);
+
+    if (dedupCount >= target) break; // reached the requested amount
+    if (!after) break; // listing ended
+    if (fresh === 0) break; // no new media this page — stop (avoid spinning)
+    if (pageCount >= maxPages) break; // hard safety bound
+    await delay(advanced.pageDelayMs); // space out requests
+  }
+
+  meta.bytes = totalBytes;
+  meta.pages = pageCount;
+  return aggregatePages(pages, target);
+}
+
 async function onSearch(event) {
   event.preventDefault();
   if (busy) return;
@@ -753,29 +834,29 @@ async function onSearch(event) {
   }
 
   const opts = {
-    limit: Number($('limit').value) || LIMITS.defaultListingLimit,
     sort: $('sort').value,
     time: $('time').value || undefined,
   };
-  const jsonUrl = buildJsonUrl(parsed, opts);
 
   setBusy(true);
   setStatus(`Fetching ${parsed.label}…`);
   const meta = {};
   const t0 = perf();
   try {
-    const json = await fetchJson(jsonUrl, settings, { stats: meta });
+    const { items, stats } = await fetchListing(parsed, opts, meta);
     const elapsedMs = perf() - t0;
-    const { items, stats } = normalizeListing(json);
     allItems = items;
     selected.clear();
     discarded.clear();
     showDiscarded = false;
-    recordFetchStats({ status: 'success', elapsedMs, bytes: meta.bytes, ...stats });
+    recordFetchStats({ status: 'success', elapsedMs, bytes: meta.bytes, pages: meta.pages, ...stats });
     refreshView();
-    addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: items.length, sort: opts.sort, time: opts.time, mode: settings.mode });
+    addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: items.length, sort: opts.sort, time: opts.time, mode: settings.mode, pages: meta.pages });
     if (advanced.autoSaveLinks) addLink(rawInput, parsed.label);
-    setStatus(reportFound(items.length), items.length === 0 ? '' : (keptItems().length ? 'ok' : 'error'));
+    const note = meta.partial
+      ? ' — a later page failed, showing partial results'
+      : (meta.pages > 1 ? ` · ${meta.pages} pages` : '');
+    setStatus(reportFound(items.length) + (items.length === 0 ? '' : note), items.length === 0 ? '' : (keptItems().length ? 'ok' : 'error'));
   } catch (err) {
     const elapsedMs = perf() - t0;
     const reason = classifyError(err?.message || err);
@@ -890,6 +971,7 @@ function renderFetchStats(s, cum) {
 
   last.push({ label: 'Time', value: formatDuration(s.elapsedMs) });
   if (Number.isFinite(s.bytes)) last.push({ label: 'Listing size', value: formatBytes(s.bytes) });
+  if (Number.isFinite(s.pages) && s.pages > 1) last.push({ label: 'Pages', value: String(s.pages), kind: 'accent' });
 
   if (s.status === 'success') {
     last.push({ label: 'Posts scanned', value: String(s.postsScanned ?? 0) });
