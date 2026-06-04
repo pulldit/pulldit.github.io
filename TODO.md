@@ -40,8 +40,8 @@ public release.
 - [x] 5.5 Persist settings (localStorage), accessibility, keyboard, About content
 
 ## Phase 6 — Cloudflare Worker (own secure proxy)
-- [ ] 6.1 `worker/cloudflare-worker.js` — host allowlist, method/size/timeout guards, CORS, no SSRF
-- [ ] 6.2 `worker/README.md` — deploy steps (wrangler + dashboard), CSP note
+- [x] 6.1 `worker/cloudflare-worker.js` — host allowlist, method/size/timeout guards, CORS, no SSRF
+- [x] 6.2 `worker/README.md` — deploy steps (wrangler + dashboard), CSP note
 
 ## Phase 7 — CI/CD (GitHub Actions)
 - [ ] 7.1 `.github/workflows/ci.yml` — install, syntax-check, tests on push/PR
