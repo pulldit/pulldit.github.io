@@ -13,6 +13,7 @@ import {
 const $ = (id) => document.getElementById(id);
 const SETTINGS_KEY = 'rd.settings.v1';
 const FILTERS_KEY = 'rd.filters.v1';
+const OPTIONS_KEY = 'rd.options.v1';
 const perf = () => (globalThis.performance && typeof performance.now === 'function' ? performance.now() : 0);
 
 /** @type {Array<object>} full normalized set from the last fetch */
@@ -96,6 +97,36 @@ function saveFilters() {
 }
 
 let filters = loadFilters();
+
+/* ----------------------------- fetch options ----------------------------- */
+
+function loadOptions() {
+  try {
+    return JSON.parse(localStorage.getItem(OPTIONS_KEY) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveOptions() {
+  try {
+    localStorage.setItem(
+      OPTIONS_KEY,
+      JSON.stringify({ sort: $('sort').value, time: $('time').value, limit: $('limit').value }),
+    );
+  } catch {
+    /* non-fatal */
+  }
+}
+
+function applySavedOptions() {
+  const o = loadOptions();
+  const sorts = ['hot', 'new', 'top', 'rising', 'controversial', 'best'];
+  if (sorts.includes(o.sort)) $('sort').value = o.sort;
+  if (['', 'hour', 'day', 'week', 'month', 'year', 'all'].includes(o.time)) $('time').value = o.time;
+  const lim = Number(o.limit);
+  if (Number.isFinite(lim) && lim >= 1 && lim <= 100) $('limit').value = String(lim);
+}
 
 function onFilterChange() {
   const next = {};
@@ -586,6 +617,10 @@ function init() {
   for (const cb of document.querySelectorAll('#filters input[data-filter]')) {
     cb.checked = filters[cb.dataset.filter] !== false;
     cb.addEventListener('change', onFilterChange);
+  }
+  applySavedOptions();
+  for (const id of ['sort', 'time', 'limit']) {
+    $(id).addEventListener('change', saveOptions);
   }
   syncProxyUi();
 }

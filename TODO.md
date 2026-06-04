@@ -7,8 +7,8 @@
 - [x] 1.2 Verify chips + proxy radios no longer outline on click
 
 ## Phase 2 — Persist fetch options
-- [ ] 2.1 `src/app.js` — save sort/time/limit to localStorage (`rd.options.v1`)
-- [ ] 2.2 `src/app.js` — load + apply them on init; save on change
+- [x] 2.1 `src/app.js` — save sort/time/limit to localStorage (`rd.options.v1`)
+- [x] 2.2 `src/app.js` — load + apply them on init; save on change
         (proxy + filters already persist)
 
 ## Phase 3 — History (fetched / downloaded / discarded / restored) + clear
