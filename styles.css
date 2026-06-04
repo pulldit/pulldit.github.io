@@ -279,6 +279,8 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .check-row:hover { border-color: var(--brand); }
 .check-row input { margin-top: 0.2rem; accent-color: var(--brand); flex: none; }
 .check-row small { display: block; color: var(--text-dim); font-size: 0.8rem; margin-top: 0.1rem; }
+.check-row.is-disabled { opacity: 0.5; cursor: not-allowed; }
+.check-row.is-disabled:hover { border-color: var(--border); }
 .select-all-row { background: transparent; border-style: dashed; margin-bottom: 1.1rem; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 0.6rem; }
 

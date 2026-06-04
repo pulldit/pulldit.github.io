@@ -43,18 +43,19 @@ export function formatPercent(part, total) {
 /**
  * Map an error message to a coarse failure category for stats grouping.
  * @param {string} message
- * @returns {'timeout'|'too-large'|'blocked'|'network'|'error'}
+ * @returns {'timeout'|'too-large'|'invalid'|'blocked'|'network'|'error'}
  */
 export function classifyError(message) {
   const m = String(message || '').toLowerCase();
   if (/abort|timed?\s?out|timeout/.test(m)) return 'timeout';
   if (/too large|exceeds|size limit|413/.test(m)) return 'too-large';
+  if (/invalid media|failed validation|undecodable|unrecognized media/.test(m)) return 'invalid';
   if (/403|forbidden|blocked|not allow|cors/.test(m)) return 'blocked';
   if (/http|network|failed|fetch|50\d|429|404|dns/.test(m)) return 'network';
   return 'error';
 }
 
-export const FAILURE_REASONS = Object.freeze(['timeout', 'too-large', 'blocked', 'network', 'error']);
+export const FAILURE_REASONS = Object.freeze(['timeout', 'too-large', 'invalid', 'blocked', 'network', 'error']);
 
 /**
  * Aggregate per-file download results into summary statistics.
@@ -70,7 +71,7 @@ export function aggregateDownload(results, wallMs) {
     totalBytes: 0,
     totalMs: 0,
     largest: 0,
-    byReason: { timeout: 0, 'too-large': 0, blocked: 0, network: 0, error: 0 },
+    byReason: { timeout: 0, 'too-large': 0, invalid: 0, blocked: 0, network: 0, error: 0 },
   };
   for (const r of list) {
     out.totalMs += Number(r.ms) || 0;

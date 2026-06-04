@@ -177,6 +177,7 @@ const ADV_DEFAULTS = Object.freeze({
   skipDownloaded: true, countDiscardedAsDownloaded: false,
   autoSaveLinks: true,
   historyLimit: MAX_HISTORY, historyAutoOverwrite: true,
+  validateMagic: true, validateDecode: true,
 });
 
 function clampInt(v, min, max, dflt) {
@@ -203,6 +204,8 @@ function loadAdvanced() {
     autoSaveLinks: typeof raw.autoSaveLinks === 'boolean' ? raw.autoSaveLinks : ADV_DEFAULTS.autoSaveLinks,
     historyLimit: clampInt(raw.historyLimit, 10, 1000, ADV_DEFAULTS.historyLimit),
     historyAutoOverwrite: typeof raw.historyAutoOverwrite === 'boolean' ? raw.historyAutoOverwrite : ADV_DEFAULTS.historyAutoOverwrite,
+    validateMagic: typeof raw.validateMagic === 'boolean' ? raw.validateMagic : ADV_DEFAULTS.validateMagic,
+    validateDecode: typeof raw.validateDecode === 'boolean' ? raw.validateDecode : ADV_DEFAULTS.validateDecode,
   };
 }
 
@@ -226,7 +229,19 @@ function applyAdvancedToUi() {
   $('adv-autosave-links').checked = advanced.autoSaveLinks;
   $('adv-history-limit').value = String(advanced.historyLimit);
   $('adv-history-overwrite').checked = advanced.historyAutoOverwrite;
+  $('adv-validate-magic').checked = advanced.validateMagic;
+  $('adv-validate-decode').checked = advanced.validateDecode;
   syncLinkAddButton();
+  syncValidateUi();
+}
+
+/** Check 2 (decode) is only meaningful while Check 1 (magic) is on — disable it otherwise. */
+function syncValidateUi() {
+  const decodeEl = $('adv-validate-decode');
+  if (!decodeEl) return;
+  decodeEl.disabled = !advanced.validateMagic;
+  const row = decodeEl.closest('.check-row');
+  if (row) row.classList.toggle('is-disabled', !advanced.validateMagic);
 }
 
 /** The manual "+ Add current link" button is redundant while auto-save is on, so disable it. */
@@ -250,6 +265,8 @@ function readAdvancedFromUi() {
     autoSaveLinks: $('adv-autosave-links').checked,
     historyLimit: clampInt($('adv-history-limit').value, 10, 1000, ADV_DEFAULTS.historyLimit),
     historyAutoOverwrite: $('adv-history-overwrite').checked,
+    validateMagic: $('adv-validate-magic').checked,
+    validateDecode: $('adv-validate-decode').checked,
   };
   saveAdvanced();
   applyAdvancedToUi(); // reflect any clamped values back (also re-syncs dependent UI)
@@ -264,6 +281,15 @@ function dlLimits() {
     delayMs: advanced.delayMs,
     maxZipFiles: advanced.maxZipFiles,
   };
+}
+
+/**
+ * Content-validation options for download.js, or null when Check 1 is off (skip entirely).
+ * Check 2 (decode) only applies on top of Check 1.
+ */
+function validateOpts() {
+  if (!advanced.validateMagic) return null;
+  return { magic: true, decode: advanced.validateDecode };
 }
 
 /* ----------------------------- downloaded registry (skip already-downloaded) ----------------------------- */
@@ -1129,7 +1155,7 @@ async function onDownloadOne(item, btn) {
   btn.disabled = true;
   btn.textContent = '…';
   try {
-    const r = await downloadSingle(item, settings, { maxBytes: lim.maxBytes, timeoutMs: lim.timeoutMs });
+    const r = await downloadSingle(item, settings, { maxBytes: lim.maxBytes, timeoutMs: lim.timeoutMs, validate: validateOpts() });
     btn.textContent = r.opened ? 'Opened' : 'Saved ✓';
     if (!r.opened) {
       markDownloaded(item); // a real save — remember it (direct-mode "opened" is unverified)
@@ -1175,7 +1201,7 @@ async function onDownloadSelected() {
   for (let i = 0; i < items.length; i += 1) {
     if (lim.delayMs > 0 && i > 0) await new Promise((r) => setTimeout(r, lim.delayMs));
     try {
-      const r = await downloadSingle(items[i], settings, { maxBytes: lim.maxBytes, timeoutMs: lim.timeoutMs });
+      const r = await downloadSingle(items[i], settings, { maxBytes: lim.maxBytes, timeoutMs: lim.timeoutMs, validate: validateOpts() });
       ok += 1;
       if (!r.opened) saved.push(items[i]);
     } catch {
@@ -1204,6 +1230,7 @@ async function onDownloadZip() {
       zipName: `pulldit-${items.length}.zip`,
       onProgress: onZipProgress,
       limits: dlLimits(),
+      validate: validateOpts(),
     });
     const okIds = new Set(result.files.filter((f) => f.ok).map((f) => f.id));
     markDownloaded(items.filter((it) => okIds.has(it.id)));
@@ -1439,7 +1466,7 @@ function init() {
     $(id).addEventListener('change', saveOptions);
   }
   applyAdvancedToUi();
-  for (const id of ['adv-delay', 'adv-timeout', 'adv-maxfile', 'adv-maxzip', 'adv-skip', 'adv-count-discarded', 'adv-autosave-links', 'adv-history-limit', 'adv-history-overwrite']) {
+  for (const id of ['adv-delay', 'adv-timeout', 'adv-maxfile', 'adv-maxzip', 'adv-skip', 'adv-count-discarded', 'adv-autosave-links', 'adv-history-limit', 'adv-history-overwrite', 'adv-validate-magic', 'adv-validate-decode']) {
     $(id).addEventListener('change', readAdvancedFromUi);
   }
   const savedStats = loadSavedStats();

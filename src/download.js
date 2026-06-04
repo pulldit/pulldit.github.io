@@ -4,6 +4,19 @@
 import { LIMITS } from './config.js';
 import { sanitizeFilename, extFromUrl } from './url-guard.js';
 import { fetchBytes, resolveProxy, canZip, ProxyMode } from './proxy.js';
+import { validateBytes } from './media-validate.js';
+
+/**
+ * Run the configured content checks over freshly-fetched bytes, throwing a precise
+ * `invalid media: …` error when they fail. A null/absent `validate` skips entirely.
+ * @param {Uint8Array} bytes
+ * @param {{ magic?: boolean, decode?: boolean } | null | undefined} validate
+ */
+async function assertValidMedia(bytes, validate) {
+  if (!validate) return;
+  const v = await validateBytes(bytes, validate);
+  if (!v.ok) throw new Error(`invalid media: ${v.reason}`);
+}
 
 /**
  * Build a safe, ordered, collision-resistant filename for a media item.
@@ -93,6 +106,7 @@ export async function downloadSingle(item, settings, opts = {}) {
       maxBytes: opts.maxBytes,
       timeoutMs: opts.timeoutMs,
     });
+    await assertValidMedia(bytes, opts.validate);
     getSaveAs()(new Blob([bytes], { type: contentType }), filename);
     return { ok: true, filename, bytes: bytes.byteLength };
   }
@@ -110,7 +124,7 @@ export async function downloadSingle(item, settings, opts = {}) {
  */
 export async function downloadZip(items, settings, opts = {}) {
   if (!canZip(settings)) throw new Error('ZIP requires a proxy mode (direct mode cannot read bytes)');
-  const { onProgress, signal, zipName = 'reddit-media.zip', limits = {} } = opts;
+  const { onProgress, signal, zipName = 'reddit-media.zip', limits = {}, validate = null } = opts;
   const maxZipFiles = orDefault(limits.maxZipFiles, LIMITS.maxZipFiles);
   const delayMs = orDefault(limits.delayMs, 0);
   const subset = items.slice(0, maxZipFiles);
@@ -136,6 +150,7 @@ export async function downloadZip(items, settings, opts = {}) {
         maxBytes: limits.maxBytes,
         timeoutMs: limits.timeoutMs,
       });
+      await assertValidMedia(bytes, validate); // reject HTML/error pages & mislabeled payloads
       const ms = now() - t0;
       let name = buildItemFilename(item, i);
       while (usedNames.has(name)) name = `dup_${usedNames.size}_${name}`;
