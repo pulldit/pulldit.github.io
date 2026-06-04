@@ -30,23 +30,25 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=15" />
+  <link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
 
   <header class="site-header">
-    <div class="brand">
-      <img class="brand-logo" src="assets/logo.svg" width="44" height="44" alt="" />
-      <div class="brand-text">
-        <h1>Pull<span>dit</span></h1>
-        <p class="tagline">Download images, GIFs &amp; videos — entirely in your browser.</p>
+    <div class="header-inner">
+      <div class="brand">
+        <img class="brand-logo" src="assets/logo.svg" width="44" height="44" alt="" />
+        <div class="brand-text">
+          <h1>Pull<span>dit</span></h1>
+          <p class="tagline">Download images, GIFs &amp; videos — entirely in your browser.</p>
+        </div>
       </div>
+      <nav class="header-links" aria-label="Primary">
+        <a href="https://github.com/pulldit/pulldit.github.io" rel="noopener noreferrer">GitHub</a>
+        <a href="#about">About</a>
+      </nav>
     </div>
-    <nav class="header-links">
-      <a href="https://github.com/pulldit/pulldit.github.io" rel="noopener noreferrer">GitHub</a>
-      <a href="#about">About</a>
-    </nav>
   </header>
 
   <main id="app">
@@ -330,12 +332,24 @@
   </main>
 
   <footer class="site-footer">
-    <p>
-      Open-source ·
-      <a href="https://github.com/pulldit/pulldit.github.io" rel="noopener noreferrer">Source</a> ·
-      <a href="https://github.com/pulldit/pulldit.github.io/blob/main/LICENSE" rel="noopener noreferrer">MIT License</a> ·
-      Runs entirely in your browser.
-    </p>
+    <div class="footer-inner">
+      <div class="footer-brand">
+        <img class="footer-logo" src="assets/logo.svg" width="26" height="26" alt="" />
+        <span class="footer-name">Pull<span>dit</span></span>
+        <span class="footer-ver" id="footer-version">v1.0.0</span>
+      </div>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="https://github.com/pulldit/pulldit.github.io" rel="noopener noreferrer">GitHub</a>
+        <a href="#about">About</a>
+        <a href="https://github.com/pulldit/pulldit.github.io/tree/main/extension" rel="noopener noreferrer">Extension</a>
+        <a href="https://github.com/pulldit/pulldit.github.io/blob/main/LICENSE" rel="noopener noreferrer">MIT License</a>
+        <a href="#about">Disclaimer</a>
+      </nav>
+      <p class="footer-note">
+        Open-source · Runs entirely in your browser · No account, no tracking, no server.
+        Not affiliated with Reddit, Inc.
+      </p>
+    </div>
   </footer>
 
   <!-- Clear-data confirmation modal -->
@@ -396,6 +410,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=15"></script>
+  <script type="module" src="src/app.js?v=16"></script>
 </body>
 </html>
