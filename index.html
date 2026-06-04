@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -201,7 +201,7 @@
         <span id="history-count" class="badge">0</span>
       </summary>
       <div class="history-toolbar">
-        <button id="clear-history" type="button" class="btn ghost">Clear history</button>
+        <button id="clear-data-btn" type="button" class="btn ghost">Clear stored data…</button>
       </div>
       <ul id="history-list" class="history-list"></ul>
     </details>
@@ -263,9 +263,30 @@
     </p>
   </footer>
 
+  <!-- Clear-data confirmation modal -->
+  <div id="clear-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="clear-modal-title">
+      <h2 id="clear-modal-title">Clear stored data</h2>
+      <p class="modal-desc">Choose what to remove from this browser. This cannot be undone.</p>
+      <ul class="modal-options">
+        <li><label class="check-row"><input type="checkbox" id="clear-history-opt" checked /><span><strong>History</strong><small>Activity log</small></span></label></li>
+        <li><label class="check-row"><input type="checkbox" id="clear-stats-opt" /><span><strong>Statistics</strong><small>Last fetch &amp; download stats</small></span></label></li>
+        <li><label class="check-row"><input type="checkbox" id="clear-settings-opt" /><span><strong>Proxy settings</strong><small>Mode, worker URL, public proxy</small></span></label></li>
+        <li><label class="check-row"><input type="checkbox" id="clear-filters-opt" /><span><strong>Filters</strong><small>Type &amp; source toggles</small></span></label></li>
+        <li><label class="check-row"><input type="checkbox" id="clear-options-opt" /><span><strong>Fetch options</strong><small>Sort, time, limit</small></span></label></li>
+      </ul>
+      <label class="check-row select-all-row"><input type="checkbox" id="clear-all-opt" /><span><strong>Select all</strong></span></label>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="clear-cancel">Cancel</button>
+        <button type="button" class="btn danger" id="clear-confirm">Clear selected</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=3"></script>
+  <script type="module" src="src/app.js?v=4"></script>
 </body>
 </html>

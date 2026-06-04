@@ -15,13 +15,13 @@
         (proxy/fetch/download/history) in `rd.ui.v1`, restore on init
 
 ## Phase 3 — Custom "Clear stored data" modal
-- [ ] 3.1 `index.html` — accessible modal (role=dialog, backdrop) with per-category
+- [x] 3.1 `index.html` — accessible modal (role=dialog, backdrop) with per-category
         checkboxes: History, Statistics, Proxy settings, Filters, Fetch options (+ select all)
-- [ ] 3.2 `styles.css` — modal layout (backdrop, centred card, actions), no default UA dialog
-- [ ] 3.3 `src/app.js` — open/close (button, Cancel, backdrop, ESC), focus management
-- [ ] 3.4 `src/app.js` — clear selected categories: remove keys + reset in-memory + re-render
-- [ ] 3.5 Wire the history "Clear stored data…" button to open the modal
+- [x] 3.2 `styles.css` — modal layout (backdrop, centred card, actions), no default UA dialog
+- [x] 3.3 `src/app.js` — open/close (button, Cancel, backdrop, ESC), focus management
+- [x] 3.4 `src/app.js` — clear selected categories: remove keys + reset in-memory + re-render
+- [x] 3.5 Wire the history "Clear stored data…" button to open the modal
 
 ## Phase 4 — Verify & ship
-- [ ] 4.1 `npm run build` green + control-char scan + serve smoke
-- [ ] 4.2 bump cache-bust version; commit + push each phase; confirm deploy + 0 alerts
+- [x] 4.1 `npm run build` green + control-char scan + serve smoke
+- [x] 4.2 bump cache-bust version; commit + push each phase; confirm deploy + 0 alerts

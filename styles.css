@@ -211,6 +211,22 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .disclaimer ul, .about ul { padding-left: 1.2rem; }
 .disclaimer li, .about li { margin: 0.3rem 0; }
 
+/* Modal */
+.btn.danger { background: var(--danger); color: #fff; border-color: transparent; }
+.modal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+.modal[hidden] { display: none; }
+.modal-backdrop { position: absolute; inset: 0; background: rgba(0, 0, 0, 0.62); backdrop-filter: blur(2px); }
+.modal-card { position: relative; z-index: 1; width: min(480px, 100%); max-height: 90vh; overflow-y: auto; background: var(--bg-elev); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.4rem; }
+.modal-card h2 { margin: 0 0 0.3rem; font-size: 1.2rem; }
+.modal-desc { margin: 0 0 1rem; color: var(--text-dim); font-size: 0.9rem; }
+.modal-options { list-style: none; margin: 0 0 0.6rem; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.check-row { display: flex; gap: 0.7rem; align-items: flex-start; padding: 0.6rem 0.7rem; border: 1px solid var(--border); border-radius: var(--radius-sm); cursor: pointer; background: var(--bg); }
+.check-row:hover { border-color: var(--brand); }
+.check-row input { margin-top: 0.2rem; accent-color: var(--brand); flex: none; }
+.check-row small { display: block; color: var(--text-dim); font-size: 0.8rem; margin-top: 0.1rem; }
+.select-all-row { background: transparent; border-style: dashed; margin-bottom: 1.1rem; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 0.6rem; }
+
 .site-footer { max-width: var(--maxw); margin: 0 auto; padding: 1.5rem 1.2rem 3rem; text-align: center; color: var(--text-dim); font-size: 0.88rem; }
 
 @media (max-width: 560px) {

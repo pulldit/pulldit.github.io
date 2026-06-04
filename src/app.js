@@ -18,6 +18,13 @@ const OPTIONS_KEY = 'rd.options.v1';
 const STATS_KEY = 'rd.stats.v1';
 const UI_KEY = 'rd.ui.v1';
 const COLLAPSIBLE_IDS = ['proxy-panel', 'fetch-stats-panel', 'download-stats-panel', 'history-panel'];
+const STORAGE_KEYS = {
+  history: HISTORY_KEY,
+  stats: STATS_KEY,
+  settings: SETTINGS_KEY,
+  filters: FILTERS_KEY,
+  options: OPTIONS_KEY,
+};
 const perf = () => (globalThis.performance && typeof performance.now === 'function' ? performance.now() : 0);
 
 /** @type {Array<object>} full normalized set from the last fetch */
@@ -204,12 +211,6 @@ let activity = loadActivity();
 
 function addHistory(entry) {
   activity = capList([...activity, { ...entry, t: Date.now() }]);
-  saveActivity();
-  renderHistory();
-}
-
-function clearHistory() {
-  activity = [];
   saveActivity();
   renderHistory();
 }
@@ -746,6 +747,97 @@ function setBusy(on) {
   updateToolbar();
 }
 
+/* ----------------------------- clear-data modal ----------------------------- */
+
+let lastFocused = null;
+
+function openClearModal() {
+  lastFocused = document.activeElement;
+  $('clear-modal').hidden = false;
+  document.addEventListener('keydown', onModalKeydown);
+  $('clear-history-opt').focus();
+}
+
+function closeClearModal() {
+  $('clear-modal').hidden = true;
+  document.removeEventListener('keydown', onModalKeydown);
+  if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
+}
+
+function onModalKeydown(e) {
+  if (e.key === 'Escape') {
+    closeClearModal();
+    return;
+  }
+  if (e.key !== 'Tab') return;
+  const f = $('clear-modal').querySelectorAll('button, input');
+  if (!f.length) return;
+  const first = f[0];
+  const last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
+function syncClearSelectAll() {
+  const all = $('clear-all-opt').checked;
+  for (const id of ['clear-history-opt', 'clear-stats-opt', 'clear-settings-opt', 'clear-filters-opt', 'clear-options-opt']) {
+    $(id).checked = all;
+  }
+}
+
+function performClear() {
+  const sel = {
+    history: $('clear-history-opt').checked,
+    stats: $('clear-stats-opt').checked,
+    settings: $('clear-settings-opt').checked,
+    filters: $('clear-filters-opt').checked,
+    options: $('clear-options-opt').checked,
+  };
+  const cleared = [];
+  for (const cat of Object.keys(sel)) {
+    if (!sel[cat]) continue;
+    try {
+      localStorage.removeItem(STORAGE_KEYS[cat]);
+    } catch {
+      /* non-fatal */
+    }
+    cleared.push(cat);
+  }
+  if (sel.history) {
+    activity = [];
+    renderHistory();
+  }
+  if (sel.stats) {
+    renderFetchStatsIdle();
+    $('download-stats-panel').hidden = true;
+    setBadge('download-stats-badge', '', '');
+  }
+  if (sel.settings) {
+    settings = { mode: ProxyMode.DIRECT, workerUrl: '', publicId: 'corsproxy' };
+    syncProxyUi();
+  }
+  if (sel.filters) {
+    filters = normalizeFilters();
+    for (const cb of document.querySelectorAll('#filters input[data-filter]')) cb.checked = true;
+    refreshView();
+  }
+  if (sel.options) {
+    $('sort').value = 'hot';
+    $('time').value = '';
+    $('limit').value = '50';
+  }
+  closeClearModal();
+  setStatus(
+    cleared.length ? `Cleared: ${cleared.join(', ')}.` : 'Nothing selected to clear.',
+    cleared.length ? 'ok' : 'error',
+  );
+}
+
 function init() {
   document.title = `${APP.name} — ${APP.tagline}`;
   $('search-form').addEventListener('submit', onSearch);
@@ -786,7 +878,13 @@ function init() {
     const el = $(id);
     if (el) el.addEventListener('toggle', saveUiState);
   }
-  $('clear-history').addEventListener('click', clearHistory);
+  $('clear-data-btn').addEventListener('click', openClearModal);
+  $('clear-cancel').addEventListener('click', closeClearModal);
+  $('clear-confirm').addEventListener('click', performClear);
+  $('clear-all-opt').addEventListener('change', syncClearSelectAll);
+  for (const el of document.querySelectorAll('#clear-modal [data-close]')) {
+    el.addEventListener('click', closeClearModal);
+  }
   syncProxyUi();
 }
 
