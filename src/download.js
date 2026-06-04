@@ -40,6 +40,30 @@ const now = () =>
     ? globalThis.performance.now()
     : 0;
 
+/** Resolve a numeric override, falling back to a default when not a finite number. */
+const orDefault = (v, dflt) => (Number.isFinite(v) ? v : dflt);
+
+/** Abortable delay (rate limiter between downloads). Rejects with 'cancelled' if aborted. */
+function sleep(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (!ms || ms <= 0) {
+      resolve();
+      return;
+    }
+    const t = setTimeout(resolve, ms);
+    if (signal) {
+      signal.addEventListener(
+        'abort',
+        () => {
+          clearTimeout(t);
+          reject(new Error('cancelled'));
+        },
+        { once: true },
+      );
+    }
+  });
+}
+
 /**
  * Open a URL in a new, isolated tab (used in direct mode where bytes can't be read).
  * @param {string} url
@@ -61,11 +85,14 @@ function openInNewTab(url) {
  * @param {object} settings
  * @returns {Promise<{ ok: true, filename?: string, opened?: boolean }>}
  */
-export async function downloadSingle(item, settings) {
+export async function downloadSingle(item, settings, opts = {}) {
   const r = resolveProxy(settings);
   if (r.ok && r.mode !== ProxyMode.DIRECT) {
     const filename = buildItemFilename(item, 0, false);
-    const { bytes, contentType } = await fetchBytes(item.url, settings);
+    const { bytes, contentType } = await fetchBytes(item.url, settings, {
+      maxBytes: opts.maxBytes,
+      timeoutMs: opts.timeoutMs,
+    });
     getSaveAs()(new Blob([bytes], { type: contentType }), filename);
     return { ok: true, filename, bytes: bytes.byteLength };
   }
@@ -83,8 +110,10 @@ export async function downloadSingle(item, settings) {
  */
 export async function downloadZip(items, settings, opts = {}) {
   if (!canZip(settings)) throw new Error('ZIP requires a proxy mode (direct mode cannot read bytes)');
-  const { onProgress, signal, zipName = 'reddit-media.zip' } = opts;
-  const subset = items.slice(0, LIMITS.maxZipFiles);
+  const { onProgress, signal, zipName = 'reddit-media.zip', limits = {} } = opts;
+  const maxZipFiles = orDefault(limits.maxZipFiles, LIMITS.maxZipFiles);
+  const delayMs = orDefault(limits.delayMs, 0);
+  const subset = items.slice(0, maxZipFiles);
   const zip = new (getJSZip())();
   const saveAs = getSaveAs();
 
@@ -98,10 +127,15 @@ export async function downloadZip(items, settings, opts = {}) {
   for (let i = 0; i < subset.length; i++) {
     if (signal?.aborted) throw new Error('cancelled');
     const item = subset[i];
+    if (delayMs > 0 && i > 0) await sleep(delayMs, signal); // rate limiter between downloads
     onProgress?.({ phase: 'fetch', index: i, total: subset.length, item, okCount, totalBytes });
     const t0 = now();
     try {
-      const { bytes } = await fetchBytes(item.url, settings, { signal });
+      const { bytes } = await fetchBytes(item.url, settings, {
+        signal,
+        maxBytes: limits.maxBytes,
+        timeoutMs: limits.timeoutMs,
+      });
       const ms = now() - t0;
       let name = buildItemFilename(item, i);
       while (usedNames.has(name)) name = `dup_${usedNames.size}_${name}`;

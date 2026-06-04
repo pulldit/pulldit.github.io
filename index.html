@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=14" />
+  <link rel="stylesheet" href="styles.css?v=15" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -186,6 +186,37 @@
       </p>
     </details>
 
+    <details id="advanced-panel" class="panel collapsible">
+      <summary>
+        <span class="summary-title advanced-title">Advanced settings</span>
+        <span class="badge">Tuning</span>
+      </summary>
+      <div class="row adv-row">
+        <label class="field compact">
+          <span class="field-label">Delay between downloads (ms)</span>
+          <input id="adv-delay" type="number" min="0" max="10000" step="50" value="0" />
+        </label>
+        <label class="field compact">
+          <span class="field-label">Request timeout (s)</span>
+          <input id="adv-timeout" type="number" min="5" max="120" value="25" />
+        </label>
+        <label class="field compact">
+          <span class="field-label">Max file size (MB)</span>
+          <input id="adv-maxfile" type="number" min="1" max="500" value="200" />
+        </label>
+        <label class="field compact">
+          <span class="field-label">Max files per ZIP</span>
+          <input id="adv-maxzip" type="number" min="1" max="1000" value="250" />
+        </label>
+      </div>
+      <p class="hint">A download delay (rate limit) helps avoid Reddit/CDN throttling on big batches.</p>
+      <ul class="adv-toggles">
+        <li><label class="check-row"><input type="checkbox" id="adv-skip" checked /><span><strong>Skip already-downloaded</strong><small>Don’t re-download posts/images you already grabbed (bulk ZIP &amp; “Download selected”).</small></span></label></li>
+        <li><label class="check-row"><input type="checkbox" id="adv-count-discarded" /><span><strong>Count discarded as downloaded</strong><small>Items you discard also count as “seen” and get skipped next time.</small></span></label></li>
+      </ul>
+      <p class="hint">Everything here is saved locally. Clear the download memory under “Clear stored data”.</p>
+    </details>
+
     <details id="fetch-stats-panel" class="panel statsbox collapsible">
       <summary>
         <span class="summary-title stats-title">Fetch statistics</span>
@@ -305,6 +336,8 @@
         <li><label class="check-row"><input type="checkbox" id="clear-settings-opt" /><span><strong>Proxy settings</strong><small>Mode, worker URL, public proxy</small></span></label></li>
         <li><label class="check-row"><input type="checkbox" id="clear-filters-opt" /><span><strong>Filters</strong><small>Type &amp; source toggles</small></span></label></li>
         <li><label class="check-row"><input type="checkbox" id="clear-options-opt" /><span><strong>Fetch options</strong><small>Sort, time, limit</small></span></label></li>
+        <li><label class="check-row"><input type="checkbox" id="clear-advanced-opt" /><span><strong>Advanced settings</strong><small>Rate limit, timeout, caps, skip toggles</small></span></label></li>
+        <li><label class="check-row"><input type="checkbox" id="clear-downloaded-opt" /><span><strong>Download memory</strong><small>Record of already-downloaded posts/images</small></span></label></li>
       </ul>
       <label class="check-row select-all-row"><input type="checkbox" id="clear-all-opt" /><span><strong>Select all</strong></span></label>
       <div class="modal-actions">
@@ -348,6 +381,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=14"></script>
+  <script type="module" src="src/app.js?v=15"></script>
 </body>
 </html>

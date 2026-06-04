@@ -121,6 +121,7 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .history-title::before { content: "🕓 "; }
 .stats-title::before { content: "📊 "; }
 .links-title::before { content: "🔗 "; }
+.advanced-title::before { content: "🛠 "; }
 .badge.good { background: rgba(46, 160, 67, 0.18); color: var(--safe); border-color: transparent; }
 .badge.bad { background: rgba(248, 81, 73, 0.18); color: var(--danger); border-color: transparent; }
 .badge.warn { background: rgba(210, 153, 34, 0.18); color: var(--warn); border-color: transparent; }
@@ -140,6 +141,10 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .link-del { flex: none; cursor: pointer; font: inherit; font-weight: 700; color: var(--text-dim);
   background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 0 0.6rem; }
 .link-del:hover { border-color: var(--danger); color: var(--danger); }
+
+/* Advanced settings */
+.adv-row { margin-top: 1rem; }
+.adv-toggles { list-style: none; margin: 0.6rem 0 0.4rem; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
 
 /* History */
 .history-toolbar { margin: 1rem 0 0.6rem; }
@@ -224,6 +229,9 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .card-discard:hover { background: var(--danger); }
 .card-restore { background: var(--safe); }
 .type-badge { position: absolute; bottom: 8px; right: 8px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; padding: 0.15rem 0.45rem; border-radius: 6px; background: rgba(0, 0, 0, 0.6); color: #fff; }
+.got-badge { position: absolute; top: 8px; left: 50%; transform: translateX(-50%); z-index: 2; font-size: 0.62rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; padding: 0.12rem 0.5rem; border-radius: 999px; background: rgba(46, 160, 67, 0.92); color: #fff; }
+.card.downloaded { opacity: 0.72; }
+.card.downloaded:hover { opacity: 1; }
 .nsfw-badge { position: absolute; bottom: 8px; left: 8px; font-size: 0.65rem; font-weight: 700; padding: 0.12rem 0.4rem; border-radius: 6px; background: var(--danger); color: #fff; }
 .card-body { padding: 0.55rem 0.6rem; display: flex; flex-direction: column; gap: 0.4rem; }
 .card-title { font-size: 0.82rem; line-height: 1.3; max-height: 2.6em; overflow: hidden; }

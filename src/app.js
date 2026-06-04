@@ -21,7 +21,10 @@ const STATS_KEY = 'rd.stats.v1';
 const UI_KEY = 'rd.ui.v1';
 const LINKS_KEY = 'rd.links.v1';
 const MAX_LINKS = 50;
-const COLLAPSIBLE_IDS = ['links-panel', 'proxy-panel', 'fetch-stats-panel', 'download-stats-panel', 'history-panel'];
+const ADVANCED_KEY = 'rd.advanced.v1';
+const DOWNLOADED_KEY = 'rd.downloaded.v1';
+const MAX_DOWNLOADED = 20000; // cap on remembered download keys (FIFO trim)
+const COLLAPSIBLE_IDS = ['links-panel', 'proxy-panel', 'advanced-panel', 'fetch-stats-panel', 'download-stats-panel', 'history-panel'];
 const STORAGE_KEYS = {
   history: HISTORY_KEY,
   links: LINKS_KEY,
@@ -29,6 +32,8 @@ const STORAGE_KEYS = {
   settings: SETTINGS_KEY,
   filters: FILTERS_KEY,
   options: OPTIONS_KEY,
+  advanced: ADVANCED_KEY,
+  downloaded: DOWNLOADED_KEY,
 };
 const perf = () => (globalThis.performance && typeof performance.now === 'function' ? performance.now() : 0);
 
@@ -163,6 +168,126 @@ function saveStatsPatch(patch) {
   } catch {
     /* non-fatal */
   }
+}
+
+/* ----------------------------- advanced settings (rate limiter + downloader) ----------------------------- */
+
+const ADV_DEFAULTS = Object.freeze({
+  delayMs: 0, timeoutSec: 25, maxFileMb: 200, maxZipFiles: 250,
+  skipDownloaded: true, countDiscardedAsDownloaded: false,
+});
+
+function clampInt(v, min, max, dflt) {
+  const n = Math.round(Number(v));
+  if (!Number.isFinite(n)) return dflt;
+  return Math.min(max, Math.max(min, n));
+}
+
+function loadAdvanced() {
+  let raw = {};
+  try {
+    raw = JSON.parse(localStorage.getItem(ADVANCED_KEY) || '{}') || {};
+  } catch {
+    raw = {};
+  }
+  return {
+    delayMs: clampInt(raw.delayMs, 0, 10000, ADV_DEFAULTS.delayMs),
+    timeoutSec: clampInt(raw.timeoutSec, 5, 120, ADV_DEFAULTS.timeoutSec),
+    maxFileMb: clampInt(raw.maxFileMb, 1, 500, ADV_DEFAULTS.maxFileMb),
+    maxZipFiles: clampInt(raw.maxZipFiles, 1, 1000, ADV_DEFAULTS.maxZipFiles),
+    skipDownloaded: typeof raw.skipDownloaded === 'boolean' ? raw.skipDownloaded : ADV_DEFAULTS.skipDownloaded,
+    countDiscardedAsDownloaded:
+      typeof raw.countDiscardedAsDownloaded === 'boolean' ? raw.countDiscardedAsDownloaded : ADV_DEFAULTS.countDiscardedAsDownloaded,
+  };
+}
+
+let advanced = loadAdvanced();
+
+function saveAdvanced() {
+  try {
+    localStorage.setItem(ADVANCED_KEY, JSON.stringify(advanced));
+  } catch {
+    /* non-fatal */
+  }
+}
+
+function applyAdvancedToUi() {
+  $('adv-delay').value = String(advanced.delayMs);
+  $('adv-timeout').value = String(advanced.timeoutSec);
+  $('adv-maxfile').value = String(advanced.maxFileMb);
+  $('adv-maxzip').value = String(advanced.maxZipFiles);
+  $('adv-skip').checked = advanced.skipDownloaded;
+  $('adv-count-discarded').checked = advanced.countDiscardedAsDownloaded;
+}
+
+function readAdvancedFromUi() {
+  advanced = {
+    delayMs: clampInt($('adv-delay').value, 0, 10000, ADV_DEFAULTS.delayMs),
+    timeoutSec: clampInt($('adv-timeout').value, 5, 120, ADV_DEFAULTS.timeoutSec),
+    maxFileMb: clampInt($('adv-maxfile').value, 1, 500, ADV_DEFAULTS.maxFileMb),
+    maxZipFiles: clampInt($('adv-maxzip').value, 1, 1000, ADV_DEFAULTS.maxZipFiles),
+    skipDownloaded: $('adv-skip').checked,
+    countDiscardedAsDownloaded: $('adv-count-discarded').checked,
+  };
+  saveAdvanced();
+  applyAdvancedToUi(); // reflect any clamped values back
+}
+
+/** Per-download limits derived from the advanced settings (passed into download.js). */
+function dlLimits() {
+  return {
+    maxBytes: advanced.maxFileMb * 1024 * 1024,
+    timeoutMs: advanced.timeoutSec * 1000,
+    delayMs: advanced.delayMs,
+    maxZipFiles: advanced.maxZipFiles,
+  };
+}
+
+/* ----------------------------- downloaded registry (skip already-downloaded) ----------------------------- */
+
+/** Stable identity for a media item across fetches (reddit ids), with a URL fallback. */
+function downloadedKey(item) {
+  return String(item.id || item.url || '');
+}
+
+function loadDownloaded() {
+  try {
+    const a = JSON.parse(localStorage.getItem(DOWNLOADED_KEY) || '[]');
+    return new Set(Array.isArray(a) ? a.filter((k) => typeof k === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+let downloaded = loadDownloaded();
+
+function saveDownloaded() {
+  try {
+    let arr = [...downloaded];
+    if (arr.length > MAX_DOWNLOADED) arr = arr.slice(arr.length - MAX_DOWNLOADED); // FIFO trim
+    localStorage.setItem(DOWNLOADED_KEY, JSON.stringify(arr));
+  } catch {
+    /* non-fatal */
+  }
+}
+
+function isDownloaded(item) {
+  return downloaded.has(downloadedKey(item));
+}
+
+/** Mark one or more items as downloaded (remembered + skipped next time). */
+function markDownloaded(itemsOrItem) {
+  const list = Array.isArray(itemsOrItem) ? itemsOrItem : [itemsOrItem];
+  let changed = false;
+  for (const it of list) {
+    const k = downloadedKey(it);
+    if (k && !downloaded.has(k)) {
+      downloaded.add(k);
+      changed = true;
+    }
+  }
+  if (changed) saveDownloaded();
+  return changed;
 }
 
 /* ----------------------------- collapsible panel state ----------------------------- */
@@ -683,6 +808,9 @@ function renderDownloadStats(a, opts = {}) {
   entries.push({ label: 'Total', value: String(a.total) });
   entries.push({ label: 'Succeeded', value: String(a.success), kind: 'good' });
   entries.push({ label: 'Failed', value: String(a.failed), kind: a.failed ? 'bad' : '' });
+  if (Number.isFinite(opts.skipped) && opts.skipped > 0) {
+    entries.push({ label: 'Skipped', value: String(opts.skipped), kind: 'warn' });
+  }
   entries.push({ label: 'Success rate', value: formatPercent(a.success, a.total) });
   entries.push({ label: 'Downloaded', value: formatBytes(a.totalBytes), kind: 'accent' });
   entries.push({ label: 'Largest file', value: formatBytes(a.largest) });
@@ -693,7 +821,7 @@ function renderDownloadStats(a, opts = {}) {
   }
   setBadge('download-stats-badge', `${a.success}/${a.total}`, a.failed ? 'warn' : 'good');
   buildStatCells(box, entries);
-  saveStatsPatch({ download: { a, elapsedMs: opts.elapsedMs } });
+  saveStatsPatch({ download: { a, elapsedMs: opts.elapsedMs, skipped: opts.skipped } });
 }
 
 /* ----------------------------- rendering ----------------------------- */
@@ -777,6 +905,15 @@ function renderCard(item, isDiscardedView) {
     media.appendChild(nsfw);
   }
 
+  if (isDownloaded(item)) {
+    li.classList.add('downloaded');
+    const got = document.createElement('span');
+    got.className = 'got-badge';
+    got.textContent = '✓ saved';
+    got.title = 'Already downloaded';
+    media.appendChild(got);
+  }
+
   const body = document.createElement('div');
   body.className = 'card-body';
   const title = document.createElement('div');
@@ -829,6 +966,11 @@ function toggleSelect(id, on, li) {
 function discardItem(id) {
   discarded.add(id);
   selected.delete(id);
+  // Optionally treat discarded items as "seen" so they're skipped in future downloads.
+  if (advanced.countDiscardedAsDownloaded) {
+    const it = allItems.find((i) => i.id === id);
+    if (it) markDownloaded(it);
+  }
   addHistory({ type: 'discard', label: itemTitle(id) });
   refreshView();
 }
@@ -877,14 +1019,33 @@ function selectedItems() {
 
 /* ----------------------------- downloads ----------------------------- */
 
+/** Add the "✓ saved" badge to a card in place (without a full grid re-render). */
+function markCardDownloaded(card) {
+  if (!card || card.classList.contains('downloaded')) return;
+  card.classList.add('downloaded');
+  const media = card.querySelector('.card-media');
+  if (media && !media.querySelector('.got-badge')) {
+    const got = document.createElement('span');
+    got.className = 'got-badge';
+    got.textContent = '✓ saved';
+    got.title = 'Already downloaded';
+    media.appendChild(got);
+  }
+}
+
 async function onDownloadOne(item, btn) {
   if (busy) return;
   const prev = btn.textContent;
+  const lim = dlLimits();
   btn.disabled = true;
   btn.textContent = '…';
   try {
-    const r = await downloadSingle(item, settings);
+    const r = await downloadSingle(item, settings, { maxBytes: lim.maxBytes, timeoutMs: lim.timeoutMs });
     btn.textContent = r.opened ? 'Opened' : 'Saved ✓';
+    if (!r.opened) {
+      markDownloaded(item); // a real save — remember it (direct-mode "opened" is unverified)
+      if (typeof btn.closest === 'function') markCardDownloaded(btn.closest('.card'));
+    }
     addHistory({ type: 'download', label: item.title || item.id });
   } catch (err) {
     btn.textContent = 'Failed';
@@ -897,32 +1058,49 @@ async function onDownloadOne(item, btn) {
   }
 }
 
+/** Drop already-downloaded items when the skip setting is on. Returns { items, skipped }. */
+function applySkip(items) {
+  if (!advanced.skipDownloaded) return { items, skipped: 0 };
+  const kept = items.filter((it) => !isDownloaded(it));
+  return { items: kept, skipped: items.length - kept.length };
+}
+
 async function onDownloadSelected() {
   if (busy) return;
-  const items = selectedItems();
-  if (!items.length) return;
+  const { items, skipped } = applySkip(selectedItems());
+  if (!items.length) {
+    setStatus(skipped ? `All ${skipped} selected item(s) were already downloaded.` : 'Nothing selected.', '');
+    return;
+  }
   if (resolveProxy(settings).mode === ProxyMode.DIRECT) {
     setStatus(`Opening ${items.length} file(s) in new tabs (Direct mode). Allow pop-ups, or use a proxy + ZIP.`, '');
   }
   setBusy(true);
+  const lim = dlLimits();
   let ok = 0;
-  for (const item of items) {
+  const saved = [];
+  for (let i = 0; i < items.length; i += 1) {
+    if (lim.delayMs > 0 && i > 0) await new Promise((r) => setTimeout(r, lim.delayMs));
     try {
-      await downloadSingle(item, settings);
+      const r = await downloadSingle(items[i], settings, { maxBytes: lim.maxBytes, timeoutMs: lim.timeoutMs });
       ok += 1;
+      if (!r.opened) saved.push(items[i]);
     } catch {
       /* keep going */
     }
   }
+  if (saved.length) markDownloaded(saved);
   setBusy(false);
-  setStatus(`Processed ${ok}/${items.length} download(s).`, ok ? 'ok' : 'error');
+  refreshView();
+  const skipNote = skipped ? ` · ${skipped} skipped` : '';
+  setStatus(`Processed ${ok}/${items.length} download(s)${skipNote}.`, ok ? 'ok' : 'error');
 }
 
 async function onDownloadZip() {
   if (busy || !canZip(settings)) return;
-  const items = selectedItems();
+  const { items, skipped } = applySkip(selectedItems());
   if (!items.length) {
-    setStatus('Nothing to zip.', 'error');
+    setStatus(skipped ? `All ${skipped} item(s) were already downloaded — nothing new to zip.` : 'Nothing to zip.', skipped ? '' : 'error');
     return;
   }
   setBusy(true);
@@ -932,11 +1110,16 @@ async function onDownloadZip() {
     const result = await downloadZip(items, settings, {
       zipName: `pulldit-${items.length}.zip`,
       onProgress: onZipProgress,
+      limits: dlLimits(),
     });
-    renderDownloadStats(aggregateDownload(result.files, result.elapsedMs), { elapsedMs: result.elapsedMs });
+    const okIds = new Set(result.files.filter((f) => f.ok).map((f) => f.id));
+    markDownloaded(items.filter((it) => okIds.has(it.id)));
+    renderDownloadStats(aggregateDownload(result.files, result.elapsedMs), { elapsedMs: result.elapsedMs, skipped });
     addHistory({ type: 'zip', added: result.added, failed: result.failed.length, size: formatBytes(result.totalBytes) });
     const failedNote = result.failed.length ? ` (${result.failed.length} failed)` : '';
-    setStatus(`ZIP ready: ${result.added} file(s)${failedNote}.`, 'ok');
+    const skipNote = skipped ? ` · ${skipped} skipped` : '';
+    setStatus(`ZIP ready: ${result.added} file(s)${failedNote}${skipNote}.`, 'ok');
+    refreshView();
   } catch (err) {
     setStatus('ZIP failed: ' + (err?.message || err), 'error');
   } finally {
@@ -1024,7 +1207,7 @@ function onModalKeydown(e) {
 
 function syncClearSelectAll() {
   const all = $('clear-all-opt').checked;
-  for (const id of ['clear-history-opt', 'clear-links-opt', 'clear-stats-opt', 'clear-settings-opt', 'clear-filters-opt', 'clear-options-opt']) {
+  for (const id of ['clear-history-opt', 'clear-links-opt', 'clear-stats-opt', 'clear-settings-opt', 'clear-filters-opt', 'clear-options-opt', 'clear-advanced-opt', 'clear-downloaded-opt']) {
     $(id).checked = all;
   }
 }
@@ -1037,6 +1220,8 @@ function performClear() {
     settings: $('clear-settings-opt').checked,
     filters: $('clear-filters-opt').checked,
     options: $('clear-options-opt').checked,
+    advanced: $('clear-advanced-opt').checked,
+    downloaded: $('clear-downloaded-opt').checked,
   };
   const cleared = [];
   for (const cat of Object.keys(sel)) {
@@ -1074,6 +1259,14 @@ function performClear() {
     $('sort').value = 'hot';
     $('time').value = '';
     $('limit').value = '50';
+  }
+  if (sel.advanced) {
+    advanced = loadAdvanced(); // storage cleared above → returns defaults
+    applyAdvancedToUi();
+  }
+  if (sel.downloaded) {
+    downloaded = new Set();
+    refreshView(); // drop the "✓ saved" badges
   }
   closeClearModal();
   setStatus(
@@ -1147,11 +1340,15 @@ function init() {
   for (const id of ['sort', 'time', 'limit']) {
     $(id).addEventListener('change', saveOptions);
   }
+  applyAdvancedToUi();
+  for (const id of ['adv-delay', 'adv-timeout', 'adv-maxfile', 'adv-maxzip', 'adv-skip', 'adv-count-discarded']) {
+    $(id).addEventListener('change', readAdvancedFromUi);
+  }
   const savedStats = loadSavedStats();
   if (savedStats.fetch) renderFetchStats(savedStats.fetch, savedStats.fetchCum);
   else renderFetchStatsIdle();
   if (savedStats.download && savedStats.download.a) {
-    renderDownloadStats(savedStats.download.a, { elapsedMs: savedStats.download.elapsedMs });
+    renderDownloadStats(savedStats.download.a, { elapsedMs: savedStats.download.elapsedMs, skipped: savedStats.download.skipped });
   }
   renderHistory();
   renderLinks();
