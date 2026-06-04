@@ -56,6 +56,7 @@ export function describeEntry(e) {
     const fail = e.failed ? ` (${e.failed} failed)` : '';
     const size = e.size ? ` · ${e.size}` : '';
     const detail = joinParts([
+      Number(e.zips) > 1 ? `${e.zips} ZIPs` : '',
       Number.isFinite(e.skipped) && e.skipped > 0 ? `${e.skipped} skipped` : '',
       e.elapsed, e.speed,
     ]);

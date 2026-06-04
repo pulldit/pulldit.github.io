@@ -46,6 +46,10 @@ const discarded = new Set();
 let showDiscarded = false;
 let busy = false;
 let dlStart = 0;
+/** Descriptor of the last successful fetch — used to name ZIP files meaningfully. */
+let lastFetch = null;
+/** When on, already-downloaded ("✓ saved") items are hidden from the kept view. */
+let hideSaved = false;
 
 /* ----------------------------- settings ----------------------------- */
 
@@ -329,6 +333,27 @@ function dlLimits() {
 function validateOpts() {
   if (!advanced.validateMagic) return null;
   return { magic: true, decode: advanced.validateDecode };
+}
+
+/** Lowercase, filename-safe slug (letters/digits → words joined by single hyphens). */
+function fnSlug(s) {
+  return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+}
+
+/** Meaningful ZIP base name from the last fetch, e.g. "pulldit-earthporn-top-week". */
+function zipBaseName() {
+  const f = lastFetch;
+  let slug = 'media';
+  if (f) {
+    if (f.kind === 'subreddit' && f.subreddit) slug = f.subreddit;
+    else if (f.kind === 'user' && f.username) slug = 'u-' + f.username;
+    else if (f.kind === 'post' && f.postId) slug = 'post-' + f.postId;
+    else if (f.label) slug = f.label;
+  }
+  const parts = ['pulldit', fnSlug(slug)];
+  if (f && f.sort) parts.push(fnSlug(f.sort));
+  if (f && f.time) parts.push(fnSlug(f.time));
+  return parts.filter(Boolean).join('-');
 }
 
 /* ----------------------------- downloaded registry (skip already-downloaded) ----------------------------- */
@@ -826,6 +851,7 @@ async function onSearch(event) {
     selected.clear();
     discarded.clear();
     showDiscarded = false;
+    lastFetch = { kind: 'media', label: parsed.label };
     refreshView();
     addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: 1, mode: settings.mode });
     if (advanced.autoSaveLinks) addLink(rawInput, parsed.label);
@@ -849,6 +875,7 @@ async function onSearch(event) {
     selected.clear();
     discarded.clear();
     showDiscarded = false;
+    lastFetch = { kind: parsed.kind, subreddit: parsed.subreddit, username: parsed.username, postId: parsed.postId, sort: opts.sort, time: opts.time, label: parsed.label };
     recordFetchStats({ status: 'success', elapsedMs, bytes: meta.bytes, pages: meta.pages, ...stats });
     refreshView();
     addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: items.length, sort: opts.sort, time: opts.time, mode: settings.mode, pages: meta.pages });
@@ -1348,7 +1375,7 @@ async function onDownloadZip() {
   dlStart = perf();
   try {
     const result = await downloadZip(items, settings, {
-      zipName: `pulldit-${items.length}.zip`,
+      zipName: zipBaseName(),
       onProgress: onZipProgress,
       limits: dlLimits(),
       validate: validateOpts(),
@@ -1358,12 +1385,13 @@ async function onDownloadZip() {
     renderDownloadStats(aggregateDownload(result.files, result.elapsedMs), { elapsedMs: result.elapsedMs, skipped });
     addHistory({
       type: 'zip', added: result.added, failed: result.failed.length,
-      size: formatBytes(result.totalBytes), skipped,
+      size: formatBytes(result.totalBytes), skipped, zips: result.zips,
       elapsed: formatDuration(result.elapsedMs),
     });
     const failedNote = result.failed.length ? ` (${result.failed.length} failed)` : '';
     const skipNote = skipped ? ` · ${skipped} skipped` : '';
-    setStatus(`ZIP ready: ${result.added} file(s)${failedNote}${skipNote}.`, 'ok');
+    const zipsNote = result.zips > 1 ? ` in ${result.zips} ZIPs` : '';
+    setStatus(`ZIP ready: ${result.added} file(s)${zipsNote}${failedNote}${skipNote}.`, 'ok');
     refreshView();
   } catch (err) {
     setStatus('ZIP failed: ' + (err?.message || err), 'error');
@@ -1376,23 +1404,21 @@ async function onDownloadZip() {
 function onZipProgress(e) {
   const bar = $('progress-bar');
   const label = $('progress-label');
+  const batchTag = e.batches > 1 ? `ZIP ${e.batch}/${e.batches} · ` : '';
   if (e.phase === 'fetch') {
-    bar.style.width = Math.round((e.index / e.total) * 90) + '%';
-    label.textContent = `Downloading ${e.index + 1} / ${e.total}…`;
+    bar.style.width = Math.round((e.index / e.total) * 100) + '%';
+    label.textContent = `${batchTag}Downloading ${e.index + 1} / ${e.total}…`;
   } else if (e.phase === 'fetched') {
     const done = e.index + 1;
-    bar.style.width = Math.round((done / e.total) * 90) + '%';
+    bar.style.width = Math.round((done / e.total) * 100) + '%';
     const elapsed = perf() - dlStart;
     const speed = elapsed > 0 ? e.totalBytes / (elapsed / 1000) : 0;
     renderDownloadStats(
       { processed: done, total: e.total, success: e.okCount, failed: done - e.okCount, totalBytes: e.totalBytes, avgSpeed: speed },
       { live: true },
     );
-  } else if (e.phase === 'compress') {
-    bar.style.width = 90 + Math.round((e.percent || 0) * 0.1) + '%';
-    label.textContent = 'Packing ZIP…';
-  } else if (e.phase === 'zip') {
-    label.textContent = 'Packing ZIP…';
+  } else if (e.phase === 'compress' || e.phase === 'zip') {
+    label.textContent = `${batchTag}Packing ZIP…`;
   }
 }
 

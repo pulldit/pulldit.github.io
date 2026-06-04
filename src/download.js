@@ -115,72 +115,97 @@ export async function downloadSingle(item, settings, opts = {}) {
 }
 
 /**
- * Build a ZIP of many items, tolerant of individual failures. Requires a proxy mode.
+ * Build ZIP(s) of many items, tolerant of individual failures. Requires a proxy mode.
+ *
+ * ALL items are processed: when there are more than `maxZipFiles`, they are split into
+ * sequential batches and EACH batch is generated and saved as its own ZIP automatically
+ * (named `<base>-<n>.zip`), with a short gap between saves so the browser accepts multiple
+ * downloads. The user clicks once and every selected file ends up downloaded.
+ *
  * @param {Array<object>} items
  * @param {object} settings
- * @param {{ onProgress?: (e: object) => void, signal?: AbortSignal, zipName?: string }} [opts]
+ * @param {{ onProgress?: (e: object) => void, signal?: AbortSignal, zipName?: string,
+ *   limits?: object, validate?: object|null }} [opts]
  * @returns {Promise<{ added: number, failed: Array<{ item: object, error: string }>,
- *   files: Array<object>, totalBytes: number, elapsedMs: number }>}
+ *   files: Array<object>, totalBytes: number, elapsedMs: number, zips: number }>}
  */
 export async function downloadZip(items, settings, opts = {}) {
   if (!canZip(settings)) throw new Error('ZIP requires a proxy mode (direct mode cannot read bytes)');
-  const { onProgress, signal, zipName = 'reddit-media.zip', limits = {}, validate = null } = opts;
+  const { onProgress, signal, zipName = 'reddit-media', limits = {}, validate = null } = opts;
   const maxZipFiles = orDefault(limits.maxZipFiles, LIMITS.maxZipFiles);
   const delayMs = orDefault(limits.delayMs, 0);
-  const subset = items.slice(0, maxZipFiles);
-  const zip = new (getJSZip())();
+  const all = Array.isArray(items) ? items : [];
+  const total = all.length;
+  const batches = Math.max(1, Math.ceil(total / maxZipFiles));
+  const base = String(zipName).replace(/\.zip$/i, '') || 'reddit-media';
   const saveAs = getSaveAs();
 
   /** @type {Array<{ id: string, title: string, name?: string, ok: boolean, bytes: number, ms: number, error?: string }>} */
   const files = [];
   let okCount = 0;
   let totalBytes = 0;
+  let processed = 0;
+  let producedZips = 0;
   const usedNames = new Set();
   const startedAt = now();
 
-  for (let i = 0; i < subset.length; i++) {
+  for (let b = 0; b < batches; b++) {
     if (signal?.aborted) throw new Error('cancelled');
-    const item = subset[i];
-    if (delayMs > 0 && i > 0) await sleep(delayMs, signal); // rate limiter between downloads
-    onProgress?.({ phase: 'fetch', index: i, total: subset.length, item, okCount, totalBytes });
-    const t0 = now();
-    try {
-      const { bytes } = await fetchBytes(item.url, settings, {
-        signal,
-        maxBytes: limits.maxBytes,
-        timeoutMs: limits.timeoutMs,
-      });
-      await assertValidMedia(bytes, validate); // reject HTML/error pages & mislabeled payloads
-      const ms = now() - t0;
-      let name = buildItemFilename(item, i);
-      while (usedNames.has(name)) name = `dup_${usedNames.size}_${name}`;
-      usedNames.add(name);
-      zip.file(name, bytes);
-      okCount += 1;
-      totalBytes += bytes.byteLength;
-      files.push({ id: item.id, title: item.title, name, ok: true, bytes: bytes.byteLength, ms });
-      onProgress?.({ phase: 'fetched', index: i, total: subset.length, ok: true, bytes: bytes.byteLength, ms, okCount, totalBytes });
-    } catch (err) {
-      const ms = now() - t0;
-      const error = err?.message ? String(err.message) : String(err);
-      files.push({ id: item.id, title: item.title, ok: false, bytes: 0, ms, error });
-      onProgress?.({ phase: 'fetched', index: i, total: subset.length, ok: false, error, okCount, totalBytes });
+    const slice = all.slice(b * maxZipFiles, (b + 1) * maxZipFiles);
+    const zip = new (getJSZip())();
+    let batchOk = 0;
+
+    for (let j = 0; j < slice.length; j++) {
+      if (signal?.aborted) throw new Error('cancelled');
+      const item = slice[j];
+      if (delayMs > 0 && processed > 0) await sleep(delayMs, signal); // rate limiter between downloads
+      onProgress?.({ phase: 'fetch', index: processed, total, batch: b + 1, batches, item, okCount, totalBytes });
+      const t0 = now();
+      try {
+        const { bytes } = await fetchBytes(item.url, settings, {
+          signal,
+          maxBytes: limits.maxBytes,
+          timeoutMs: limits.timeoutMs,
+        });
+        await assertValidMedia(bytes, validate); // reject HTML/error pages & mislabeled payloads
+        const ms = now() - t0;
+        let name = buildItemFilename(item, processed); // global index keeps the sequence ordered across ZIPs
+        while (usedNames.has(name)) name = `dup_${usedNames.size}_${name}`;
+        usedNames.add(name);
+        zip.file(name, bytes);
+        okCount += 1;
+        batchOk += 1;
+        totalBytes += bytes.byteLength;
+        files.push({ id: item.id, title: item.title, name, ok: true, bytes: bytes.byteLength, ms });
+        onProgress?.({ phase: 'fetched', index: processed, total, batch: b + 1, batches, ok: true, bytes: bytes.byteLength, ms, okCount, totalBytes });
+      } catch (err) {
+        const ms = now() - t0;
+        const error = err?.message ? String(err.message) : String(err);
+        files.push({ id: item.id, title: item.title, ok: false, bytes: 0, ms, error });
+        onProgress?.({ phase: 'fetched', index: processed, total, batch: b + 1, batches, ok: false, error, okCount, totalBytes });
+      }
+      processed += 1;
     }
+
+    if (batchOk === 0) continue; // every file in this batch failed — don't save an empty ZIP
+    onProgress?.({ phase: 'zip', batch: b + 1, batches });
+    // STORE (no recompression): Reddit media is already compressed; this is fast and lossless.
+    const blob = await zip.generateAsync(
+      { type: 'blob', compression: 'STORE' },
+      (meta) => onProgress?.({ phase: 'compress', percent: meta.percent, batch: b + 1, batches }),
+    );
+    producedZips += 1;
+    const name = batches === 1 ? `${base}.zip` : `${base}-${producedZips}.zip`;
+    saveAs(blob, name);
+    if (b < batches - 1) await sleep(700, signal); // gap so the browser allows the next download
   }
 
   if (okCount === 0) {
     throw new Error(`no files could be downloaded (${files.length} failed)`);
   }
-  onProgress?.({ phase: 'zip', total: subset.length });
-  // STORE (no recompression): Reddit media is already compressed; this is fast and lossless.
-  const blob = await zip.generateAsync(
-    { type: 'blob', compression: 'STORE' },
-    (meta) => onProgress?.({ phase: 'compress', percent: meta.percent }),
-  );
-  saveAs(blob, zipName);
   const elapsedMs = now() - startedAt;
   const failed = files
     .filter((f) => !f.ok)
     .map((f) => ({ item: { id: f.id, title: f.title }, error: f.error }));
-  return { added: okCount, failed, files, totalBytes, elapsedMs };
+  return { added: okCount, failed, files, totalBytes, elapsedMs, zips: producedZips };
 }
