@@ -1438,6 +1438,8 @@ function onExtModalKeydown(e) {
 
 function init() {
   document.title = `${APP.name} — ${APP.tagline}`;
+  const footerVer = $('footer-version');
+  if (footerVer) footerVer.textContent = `v${APP.version}`;
   $('search-form').addEventListener('submit', onSearch);
   $('select-all').addEventListener('click', () => {
     keptItems().forEach((i) => selected.add(i.id));
