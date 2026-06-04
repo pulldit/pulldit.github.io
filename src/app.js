@@ -4,6 +4,7 @@
 import { APP, LIMITS, DEFAULT_PUBLIC_ID } from './config.js';
 import { parseInput, buildJsonUrl, normalizeListing } from './reddit.js';
 import { fetchJson, canZip, resolveProxy, getPublicProxy, ProxyMode } from './proxy.js';
+import { detectExtension } from './bridge-client.js';
 import { downloadSingle, downloadZip } from './download.js';
 import { applyFilters, normalizeFilters } from './filters.js';
 import {
@@ -48,8 +49,9 @@ function loadSettings() {
     const parsed = JSON.parse(raw);
     // Migrate any stale/removed proxy id (e.g. corsproxy/thingproxy) to a valid one.
     const publicId = getPublicProxy(parsed.publicId) ? parsed.publicId : DEFAULT_PUBLIC_ID;
+    const validModes = [ProxyMode.DIRECT, ProxyMode.WORKER, ProxyMode.PUBLIC, ProxyMode.EXTENSION];
     return {
-      mode: [ProxyMode.DIRECT, ProxyMode.WORKER, ProxyMode.PUBLIC].includes(parsed.mode) ? parsed.mode : ProxyMode.DIRECT,
+      mode: validModes.includes(parsed.mode) ? parsed.mode : ProxyMode.DIRECT,
       workerUrl: typeof parsed.workerUrl === 'string' ? parsed.workerUrl : '',
       publicId,
     };
@@ -76,7 +78,7 @@ function syncProxyUi() {
   $('public-proxy').value = settings.publicId;
 
   const resolved = resolveProxy(settings);
-  const labels = { direct: 'Direct', worker: 'Worker', public: 'Public proxy' };
+  const labels = { direct: 'Direct', worker: 'Worker', public: 'Public proxy', extension: 'Extension' };
   $('proxy-badge').textContent = resolved.ok ? labels[settings.mode] : 'Invalid config';
 
   $('download-zip').title = canZip(settings)
@@ -954,6 +956,31 @@ function init() {
     el.addEventListener('click', closeClearModal);
   }
   syncProxyUi();
+  initExtensionMode();
+}
+
+/**
+ * Detect the optional Pulldit Bridge extension and reveal the "Extension" mode when present.
+ * If a saved setting selected extension mode but it is not installed, fall back to direct.
+ */
+function initExtensionMode() {
+  const option = $('ext-mode-option');
+  const hint = $('ext-install-hint');
+  detectExtension().then(({ available }) => {
+    if (available) {
+      if (option) option.hidden = false;
+      if (hint) hint.hidden = true;
+    } else {
+      if (option) option.hidden = true;
+      if (hint) hint.hidden = false;
+      if (settings.mode === ProxyMode.EXTENSION) {
+        settings = { ...settings, mode: ProxyMode.DIRECT };
+        saveSettings(settings);
+        syncProxyUi();
+        setStatus('The Pulldit extension is not installed — switched to Direct mode.', '');
+      }
+    }
+  });
 }
 
 if (document.readyState === 'loading') {

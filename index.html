@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=5" />
+  <link rel="stylesheet" href="styles.css?v=6" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -121,6 +121,16 @@
       <fieldset class="proxy-modes">
         <legend class="visually-hidden">Proxy mode</legend>
 
+        <label class="radio" id="ext-mode-option" hidden>
+          <input type="radio" name="proxy-mode" value="extension" />
+          <span>
+            <strong>Pulldit Extension</strong> <em class="tag safe">ZIP · your IP · most reliable</em>
+            <small>Detected ✓ — fetches Reddit &amp; media from <strong>your own IP</strong> via the
+              installed extension. Full bulk ZIP, no third-party proxy, and it keeps working when
+              Reddit blocks datacenter proxies.</small>
+          </span>
+        </label>
+
         <label class="radio">
           <input type="radio" name="proxy-mode" value="direct" checked />
           <span>
@@ -157,6 +167,12 @@
           </span>
         </label>
       </fieldset>
+
+      <p id="ext-install-hint" class="hint" hidden>
+        💡 For the most reliable, proxy-free ZIP — straight from your own IP — install the
+        <a href="https://github.com/pulldit/pulldit.github.io/tree/main/extension" target="_blank" rel="noopener noreferrer">Pulldit browser extension</a>.
+        The site detects it automatically and unlocks an “Extension” mode above.
+      </p>
     </details>
 
     <details id="fetch-stats-panel" class="panel statsbox collapsible">
@@ -289,6 +305,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=5"></script>
+  <script type="module" src="src/app.js?v=6"></script>
 </body>
 </html>

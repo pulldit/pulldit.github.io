@@ -36,11 +36,11 @@ Page still works fully without the extension (direct / public / worker modes unc
 - [x] build + commit
 
 ## Phase 3 — UI wiring (detect + new mode)
-- [ ] `index.html` — extension radio (hidden until detected) + install hint (shown when absent);
+- [x] `index.html` — extension radio (hidden until detected) + install hint (shown when absent);
       cache-bust v5 → v6
-- [ ] `src/app.js` — detect on init; show/hide radio + "detected" badge; allow `extension` in saved
+- [x] `src/app.js` — detect on init; show/hide radio + "detected" badge; allow `extension` in saved
       settings; fall back to direct if mode=extension but not installed
-- [ ] build + commit
+- [x] build + commit
 
 ## Phase 4 — Docs + cleanup
 - [ ] README.md — document the bridge extension (what it unlocks, how to install)
