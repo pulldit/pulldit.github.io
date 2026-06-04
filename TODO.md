@@ -12,8 +12,8 @@
         (proxy + filters already persist)
 
 ## Phase 3 — History (fetched / downloaded / discarded / restored) + clear
-- [ ] 3.1 `src/history.js` — pure helpers: capList, describeEntry (+ HISTORY_KEY, MAX)
-- [ ] 3.2 `test/history.test.js` — cap + describe
+- [x] 3.1 `src/history.js` — pure helpers: capList, describeEntry (+ HISTORY_KEY, MAX)
+- [x] 3.2 `test/history.test.js` — cap + describe
 - [ ] 3.3 `index.html` — collapsible History panel + Clear button + list
 - [ ] 3.4 `styles.css` — history list styles
 - [ ] 3.5 `src/app.js` — load/save/render history; record fetch, download, zip,
