@@ -19,9 +19,9 @@ public release.
 - [x] 1.3 `test/url-guard.test.js` — allowlist, rejects (private IPs, javascript:, data:, lookalikes), filenames
 
 ## Phase 2 — Reddit logic
-- [ ] 2.1 `src/reddit.js` — parseInput (post/subreddit/user/url/shorthand), buildJsonUrl
-- [ ] 2.2 `src/reddit.js` — normalizeListing -> MediaItem[] (image/gif/video/gallery/crosspost)
-- [ ] 2.3 `test/reddit.test.js` — input parsing + normalization fixtures
+- [x] 2.1 `src/reddit.js` — parseInput (post/subreddit/user/url/shorthand), buildJsonUrl
+- [x] 2.2 `src/reddit.js` — normalizeListing -> MediaItem[] (image/gif/video/gallery/crosspost)
+- [x] 2.3 `test/reddit.test.js` — input parsing + normalization fixtures
 
 ## Phase 3 — Proxy + fetch layer
 - [ ] 3.1 `src/proxy.js` — ProxyMode, presets, buildProxiedUrl, zip capability flag
