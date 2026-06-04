@@ -80,9 +80,14 @@ input[type="text"], input[type="url"], input[type="number"], select {
   width: 100%; padding: 0.7rem 0.8rem; background: var(--bg); color: var(--text);
   border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 1rem; font-family: inherit;
 }
-input:focus, select:focus, button:focus-visible {
+/* :focus-visible (not :focus) so a MOUSE click on a checkbox/radio/button shows no ring;
+   keyboard navigation still does, and text inputs still ring while typing. */
+input:focus-visible, select:focus-visible, button:focus-visible {
   outline: 2px solid var(--brand); outline-offset: 1px; border-color: var(--brand);
 }
+/* Belt-and-suspenders: never draw the heavy ring on pointer focus of toggles. */
+input[type="checkbox"]:focus:not(:focus-visible),
+input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .hint { margin: 0.1rem 0 0.9rem; color: var(--text-dim); font-size: 0.85rem; }
 .row { display: flex; gap: 0.8rem; align-items: flex-end; flex-wrap: wrap; }
 .field.compact { flex: 1 1 120px; margin-bottom: 0; }
