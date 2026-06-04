@@ -710,7 +710,9 @@ function viewItems() {
   return applyFilters(allItems, filters);
 }
 function keptItems() {
-  return viewItems().filter((i) => !discarded.has(i.id));
+  let arr = viewItems().filter((i) => !discarded.has(i.id));
+  if (hideSaved) arr = arr.filter((i) => !isDownloaded(i));
+  return arr;
 }
 function discardedItems() {
   return viewItems().filter((i) => discarded.has(i.id));
@@ -1268,6 +1270,11 @@ function updateToolbar() {
   toggle.hidden = disc === 0 && !showDiscarded;
   toggle.textContent = showDiscarded ? 'Back to kept' : `Show discarded (${disc})`;
 
+  const savedCount = viewItems().filter((i) => !discarded.has(i.id) && isDownloaded(i)).length;
+  const savedBtn = $('toggle-saved');
+  savedBtn.hidden = showDiscarded || (savedCount === 0 && !hideSaved);
+  savedBtn.textContent = hideSaved ? `Show saved (${savedCount})` : `Hide saved (${savedCount})`;
+
   $('restore-all').hidden = !(showDiscarded && disc > 0);
   $('select-all').hidden = showDiscarded;
   $('select-none').hidden = showDiscarded;
@@ -1625,6 +1632,10 @@ function init() {
     refreshView();
   });
   $('toggle-discarded').addEventListener('click', toggleDiscardedView);
+  $('toggle-saved').addEventListener('click', () => {
+    hideSaved = !hideSaved;
+    refreshView();
+  });
   $('restore-all').addEventListener('click', restoreAll);
   $('download-selected').addEventListener('click', onDownloadSelected);
   $('download-zip').addEventListener('click', onDownloadZip);
