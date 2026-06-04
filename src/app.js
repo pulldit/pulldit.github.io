@@ -414,7 +414,7 @@ function renderHistory() {
   const window = Math.max(1, Number(historyShown) || advanced.historyLimit);
   const shown = Math.min(window, total);
   for (let i = total - 1; i >= total - shown; i -= 1) {
-    list.appendChild(renderHistoryItem(activity[i]));
+    list.appendChild(renderHistoryItem(activity[i], i));
   }
   if (total > shown) {
     const li = document.createElement('li');
@@ -432,8 +432,8 @@ function renderHistory() {
   }
 }
 
-/** Build one history <li> with time, icon, primary text and an optional secondary detail line. */
-function renderHistoryItem(e) {
+/** Build one history <li> with time, icon, primary text, optional detail line and a delete button. */
+function renderHistoryItem(e, index) {
   const d = describeEntry(e);
   const li = document.createElement('li');
   li.className = 'history-item' + (d.kind === 'good' || d.kind === 'bad' || d.kind === 'warn' ? ' ' + d.kind : '');
@@ -455,10 +455,26 @@ function renderHistoryItem(e) {
     detail.textContent = d.detail;
     main.appendChild(detail);
   }
+  const del = document.createElement('button');
+  del.type = 'button';
+  del.className = 'history-del';
+  del.textContent = '✕';
+  del.title = 'Remove this entry';
+  del.setAttribute('aria-label', 'Remove history entry: ' + d.text);
+  del.addEventListener('click', () => removeHistoryAt(index));
   li.appendChild(time);
   li.appendChild(icon);
   li.appendChild(main);
+  li.appendChild(del);
   return li;
+}
+
+/** Remove a single activity-history entry by its index in `activity`. */
+function removeHistoryAt(index) {
+  if (!Number.isInteger(index) || index < 0 || index >= activity.length) return;
+  activity.splice(index, 1);
+  saveActivity();
+  renderHistory();
 }
 
 function itemTitle(id) {

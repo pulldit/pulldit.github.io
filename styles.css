@@ -164,6 +164,10 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .history-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.05rem; }
 .history-text { word-break: break-word; }
 .history-detail { color: var(--text-dim); font-size: 0.74rem; word-break: break-word; }
+.history-del { flex: none; align-self: center; cursor: pointer; font: inherit; font-size: 0.78rem; font-weight: 700;
+  line-height: 1; color: var(--text-dim); background: transparent; border: 1px solid transparent;
+  border-radius: var(--radius-sm); padding: 0.15rem 0.4rem; }
+.history-del:hover { border-color: var(--danger); color: var(--danger); }
 .history-more { display: flex; justify-content: center; margin-top: 0.25rem; }
 .history-more-btn { font-size: 0.78rem; padding: 0.35rem 0.9rem; }
 .history-item.good .history-icon { color: var(--safe); }
