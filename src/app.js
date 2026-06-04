@@ -649,6 +649,8 @@ function renderCard(item, isDiscardedView) {
     media.appendChild(discard);
   }
 
+  // Prefer the small downscaled thumbnail. Only fall back to the full-res file for non-video
+  // items that genuinely have no preview (rare) — keeps a large grid light.
   const thumbUrl = item.thumbnail || (item.type !== 'video' ? item.url : '');
   if (thumbUrl) {
     const img = document.createElement('img');
@@ -656,6 +658,9 @@ function renderCard(item, isDiscardedView) {
     img.decoding = 'async';
     img.referrerPolicy = 'no-referrer';
     img.alt = item.title || '';
+    // Layout hints so the grid doesn't reflow as thumbnails stream in.
+    img.width = 320;
+    img.height = 320;
     img.src = thumbUrl;
     img.addEventListener('error', () => {
       img.remove();

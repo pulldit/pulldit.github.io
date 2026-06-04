@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseInput, buildJsonUrl, normalizeListing, unescapeHtml, singleMediaItem } from '../src/reddit.js';
+import { parseInput, buildJsonUrl, normalizeListing, unescapeHtml, singleMediaItem, pickPreviewUrl } from '../src/reddit.js';
 
 describe('unescapeHtml', () => {
   it('decodes the entities reddit emits', () => {
@@ -9,6 +9,28 @@ describe('unescapeHtml', () => {
   it('does not double-unescape (&amp;lt; -> &lt;, not <)', () => {
     expect(unescapeHtml('a&amp;lt;b')).toBe('a&lt;b');
     expect(unescapeHtml('q=1&amp;amp;r=2')).toBe('q=1&amp;r=2');
+  });
+});
+
+describe('pickPreviewUrl', () => {
+  const res = [
+    { u: 'https://x/108.jpg', x: 108 },
+    { u: 'https://x/320.jpg', x: 320 },
+    { u: 'https://x/640.jpg', x: 640 },
+    { u: 'https://x/1080.jpg', x: 1080 },
+  ];
+  it('picks the smallest preview at or above the target width (never the source)', () => {
+    expect(pickPreviewUrl(res, 320)).toBe('https://x/320.jpg');
+    expect(pickPreviewUrl(res, 200)).toBe('https://x/320.jpg');
+    expect(pickPreviewUrl(res, 100)).toBe('https://x/108.jpg');
+  });
+  it('falls back to the largest available when all are smaller than target', () => {
+    expect(pickPreviewUrl(res, 5000)).toBe('https://x/1080.jpg');
+  });
+  it('decodes HTML entities and handles empty input', () => {
+    expect(pickPreviewUrl([{ u: 'https://x/a.jpg?w=1&amp;s=2', x: 400 }], 320)).toBe('https://x/a.jpg?w=1&s=2');
+    expect(pickPreviewUrl([], 320)).toBeUndefined();
+    expect(pickPreviewUrl(undefined)).toBeUndefined();
   });
 });
 

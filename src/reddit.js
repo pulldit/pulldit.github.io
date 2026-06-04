@@ -163,16 +163,36 @@ function isDirectVideo(raw) {
 }
 
 /**
- * Pick a small preview URL for on-screen display (CORS not required for <img>).
+ * From a Reddit "resolutions" array (ascending by width), pick the SMALLEST preview whose width
+ * is >= target — a cheap thumbnail, never the multi-megapixel source. Falls back to the largest
+ * available preview if all are smaller. Pure + tested.
+ * @param {Array<{u?: string, url?: string, x?: number, width?: number}>} resolutions
+ * @param {number} [target] desired min width in px (default 320 — crisp on a ~180px card)
+ * @returns {string|undefined}
+ */
+export function pickPreviewUrl(resolutions, target = 320) {
+  if (!Array.isArray(resolutions) || resolutions.length === 0) return undefined;
+  let chosen;
+  for (const r of resolutions) {
+    const u = r && (r.u || r.url);
+    if (!u) continue;
+    chosen = r;
+    const w = Number(r.x ?? r.width);
+    if (Number.isFinite(w) && w >= target) break; // first one big enough — stop
+  }
+  const url = chosen && (chosen.u || chosen.url);
+  return url ? unescapeHtml(url) : undefined;
+}
+
+/**
+ * Pick a small preview URL for on-screen display (CORS not required for <img>). Prefers a small
+ * downscaled preview so a grid of 100s of cards stays light; the SOURCE is only a last resort.
  * @param {any} d
  * @returns {string|undefined}
  */
 function pickThumbnail(d) {
-  const res = d?.preview?.images?.[0]?.resolutions;
-  if (Array.isArray(res) && res.length) {
-    const mid = res[Math.min(res.length - 1, 2)];
-    if (mid?.url) return unescapeHtml(mid.url);
-  }
+  const small = pickPreviewUrl(d?.preview?.images?.[0]?.resolutions);
+  if (small) return small;
   const src = d?.preview?.images?.[0]?.source?.url;
   if (src) return unescapeHtml(src);
   if (typeof d?.thumbnail === 'string' && /^https?:/.test(d.thumbnail)) return d.thumbnail;
@@ -208,7 +228,8 @@ function extractFromPost(d) {
         id: `${d.id}-${it.media_id}`,
         type: ext === 'gif' ? 'gif' : 'image',
         url: `https://i.redd.it/${it.media_id}.${ext}`,
-        thumbnail: unescapeHtml(m.s?.u || m.p?.[0]?.u || base.thumbnail || ''),
+        // Small downscaled preview for the grid — NOT m.s (the full-res source) which lags hard.
+        thumbnail: pickPreviewUrl(m.p) || unescapeHtml(m.s?.u || base.thumbnail || ''),
       });
     }
     if (out.length) return finalize(out);
