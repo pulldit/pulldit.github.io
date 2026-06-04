@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=24" />
+  <link rel="stylesheet" href="styles.css?v=25" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -47,6 +47,8 @@
       <nav class="header-links" aria-label="Primary">
         <a href="https://github.com/pulldit/pulldit.github.io" rel="noopener noreferrer">GitHub</a>
         <a href="#about">About</a>
+        <a href="https://github.com/pulldit/pulldit.github.io/tree/main/extension" rel="noopener noreferrer">Extension</a>
+        <a href="#disclaimer">Disclaimer</a>
       </nav>
     </div>
   </header>
@@ -333,7 +335,7 @@
       </p>
     </section>
 
-    <section class="panel disclaimer">
+    <section id="disclaimer" class="panel disclaimer">
       <h2>Disclaimer &amp; responsible use</h2>
       <ul>
         <li>Provided <strong>“as is”, without any warranty</strong>. See the
@@ -355,12 +357,6 @@
         <span class="footer-name">Pull<span>dit</span></span>
         <span class="footer-ver" id="footer-version">v1.0.0</span>
       </div>
-      <nav class="footer-links" aria-label="Footer">
-        <a href="https://github.com/pulldit/pulldit.github.io" rel="noopener noreferrer">GitHub</a>
-        <a href="#about">About</a>
-        <a href="https://github.com/pulldit/pulldit.github.io/tree/main/extension" rel="noopener noreferrer">Extension</a>
-        <a href="#about">Disclaimer</a>
-      </nav>
       <nav class="footer-badges" aria-label="Project status">
         <a class="fbadge license" href="https://github.com/pulldit/pulldit.github.io/blob/main/LICENSE" rel="noopener noreferrer">
           <span class="fbadge-k">License</span><span class="fbadge-v">MIT</span>
@@ -440,6 +436,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=24"></script>
+  <script type="module" src="src/app.js?v=25"></script>
 </body>
 </html>

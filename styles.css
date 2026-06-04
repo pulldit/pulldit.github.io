@@ -315,9 +315,6 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .footer-name span { color: var(--brand); }
 .footer-ver { font-weight: 600; font-size: 0.72rem; color: var(--text-dim); background: var(--bg-elev-2);
   border: 1px solid var(--border); border-radius: 999px; padding: 0.05rem 0.45rem; }
-.footer-links { display: inline-flex; gap: 0.9rem; flex-wrap: wrap; justify-content: center; font-weight: 600; }
-.footer-links a { text-decoration: none; }
-.footer-links a:hover { text-decoration: underline; }
 .footer-note { margin: 0; flex: 1 1 100%; font-size: 0.78rem; opacity: 0.9; }
 /* Local two-tone status pills (shields-style) — no external images, CSP stays strict. */
 .footer-badges { display: inline-flex; gap: 0.45rem; flex-wrap: wrap; justify-content: center; }
