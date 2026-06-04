@@ -175,6 +175,7 @@ function saveStatsPatch(patch) {
 const ADV_DEFAULTS = Object.freeze({
   delayMs: 0, timeoutSec: 25, maxFileMb: 200, maxZipFiles: 250,
   skipDownloaded: true, countDiscardedAsDownloaded: false,
+  autoSaveLinks: true,
 });
 
 function clampInt(v, min, max, dflt) {
@@ -198,6 +199,7 @@ function loadAdvanced() {
     skipDownloaded: typeof raw.skipDownloaded === 'boolean' ? raw.skipDownloaded : ADV_DEFAULTS.skipDownloaded,
     countDiscardedAsDownloaded:
       typeof raw.countDiscardedAsDownloaded === 'boolean' ? raw.countDiscardedAsDownloaded : ADV_DEFAULTS.countDiscardedAsDownloaded,
+    autoSaveLinks: typeof raw.autoSaveLinks === 'boolean' ? raw.autoSaveLinks : ADV_DEFAULTS.autoSaveLinks,
   };
 }
 
@@ -218,6 +220,18 @@ function applyAdvancedToUi() {
   $('adv-maxzip').value = String(advanced.maxZipFiles);
   $('adv-skip').checked = advanced.skipDownloaded;
   $('adv-count-discarded').checked = advanced.countDiscardedAsDownloaded;
+  $('adv-autosave-links').checked = advanced.autoSaveLinks;
+  syncLinkAddButton();
+}
+
+/** The manual "+ Add current link" button is redundant while auto-save is on, so disable it. */
+function syncLinkAddButton() {
+  const btn = $('link-add-btn');
+  if (!btn) return;
+  btn.disabled = advanced.autoSaveLinks;
+  btn.title = advanced.autoSaveLinks
+    ? 'Auto-save is on — fetched links are saved automatically. Turn it off in Advanced settings to add links manually.'
+    : 'Save the current link to your Link history';
 }
 
 function readAdvancedFromUi() {
@@ -228,9 +242,10 @@ function readAdvancedFromUi() {
     maxZipFiles: clampInt($('adv-maxzip').value, 1, 1000, ADV_DEFAULTS.maxZipFiles),
     skipDownloaded: $('adv-skip').checked,
     countDiscardedAsDownloaded: $('adv-count-discarded').checked,
+    autoSaveLinks: $('adv-autosave-links').checked,
   };
   saveAdvanced();
-  applyAdvancedToUi(); // reflect any clamped values back
+  applyAdvancedToUi(); // reflect any clamped values back (also re-syncs dependent UI)
 }
 
 /** Per-download limits derived from the advanced settings (passed into download.js). */
@@ -593,7 +608,7 @@ async function onSearch(event) {
     showDiscarded = false;
     refreshView();
     addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: 1 });
-    addLink(rawInput, parsed.label);
+    if (advanced.autoSaveLinks) addLink(rawInput, parsed.label);
     setStatus(reportFound(1), keptItems().length ? 'ok' : 'error');
     return;
   }
@@ -620,7 +635,7 @@ async function onSearch(event) {
     recordFetchStats({ status: 'success', elapsedMs, bytes: meta.bytes, ...stats });
     refreshView();
     addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: items.length });
-    addLink(rawInput, parsed.label);
+    if (advanced.autoSaveLinks) addLink(rawInput, parsed.label);
     setStatus(reportFound(items.length), items.length === 0 ? '' : (keptItems().length ? 'ok' : 'error'));
   } catch (err) {
     const elapsedMs = perf() - t0;
@@ -1341,7 +1356,7 @@ function init() {
     $(id).addEventListener('change', saveOptions);
   }
   applyAdvancedToUi();
-  for (const id of ['adv-delay', 'adv-timeout', 'adv-maxfile', 'adv-maxzip', 'adv-skip', 'adv-count-discarded']) {
+  for (const id of ['adv-delay', 'adv-timeout', 'adv-maxfile', 'adv-maxzip', 'adv-skip', 'adv-count-discarded', 'adv-autosave-links']) {
     $(id).addEventListener('change', readAdvancedFromUi);
   }
   const savedStats = loadSavedStats();

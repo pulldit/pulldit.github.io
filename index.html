@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=17" />
+  <link rel="stylesheet" href="styles.css?v=18" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -215,6 +215,7 @@
       <ul class="adv-toggles">
         <li><label class="check-row"><input type="checkbox" id="adv-skip" checked /><span><strong>Skip already-downloaded</strong><small>Don’t re-download posts/images you already grabbed (bulk ZIP &amp; “Download selected”).</small></span></label></li>
         <li><label class="check-row"><input type="checkbox" id="adv-count-discarded" /><span><strong>Count discarded as downloaded</strong><small>Items you discard also count as “seen” and get skipped next time.</small></span></label></li>
+        <li><label class="check-row"><input type="checkbox" id="adv-autosave-links" checked /><span><strong>Auto-save fetched links</strong><small>Remember every link you fetch in the Link history. When on, the “+ Add current link” button is disabled (it would be redundant).</small></span></label></li>
       </ul>
       <p class="hint">Everything here is saved locally and loaded automatically on your next visit.</p>
       <div class="adv-tools">
@@ -411,6 +412,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=17"></script>
+  <script type="module" src="src/app.js?v=18"></script>
 </body>
 </html>
