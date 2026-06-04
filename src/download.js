@@ -34,6 +34,12 @@ function getSaveAs() {
   return s;
 }
 
+/** High-resolution clock when available; 0 otherwise (keeps stats degradable). */
+const now = () =>
+  globalThis.performance && typeof globalThis.performance.now === 'function'
+    ? globalThis.performance.now()
+    : 0;
+
 /**
  * Open a URL in a new, isolated tab (used in direct mode where bytes can't be read).
  * @param {string} url
@@ -61,7 +67,7 @@ export async function downloadSingle(item, settings) {
     const filename = buildItemFilename(item, 0, false);
     const { bytes, contentType } = await fetchBytes(item.url, settings);
     getSaveAs()(new Blob([bytes], { type: contentType }), filename);
-    return { ok: true, filename };
+    return { ok: true, filename, bytes: bytes.byteLength };
   }
   openInNewTab(item.url);
   return { ok: true, opened: true };
@@ -72,7 +78,8 @@ export async function downloadSingle(item, settings) {
  * @param {Array<object>} items
  * @param {object} settings
  * @param {{ onProgress?: (e: object) => void, signal?: AbortSignal, zipName?: string }} [opts]
- * @returns {Promise<{ added: number, failed: Array<{ item: object, error: string }> }>}
+ * @returns {Promise<{ added: number, failed: Array<{ item: object, error: string }>,
+ *   files: Array<object>, totalBytes: number, elapsedMs: number }>}
  */
 export async function downloadZip(items, settings, opts = {}) {
   if (!canZip(settings)) throw new Error('ZIP requires a proxy mode (direct mode cannot read bytes)');
@@ -80,27 +87,40 @@ export async function downloadZip(items, settings, opts = {}) {
   const subset = items.slice(0, LIMITS.maxZipFiles);
   const zip = new (getJSZip())();
   const saveAs = getSaveAs();
-  const result = { added: 0, failed: [] };
 
+  /** @type {Array<{ id: string, title: string, name?: string, ok: boolean, bytes: number, ms: number, error?: string }>} */
+  const files = [];
+  let okCount = 0;
+  let totalBytes = 0;
   const usedNames = new Set();
+  const startedAt = now();
+
   for (let i = 0; i < subset.length; i++) {
     if (signal?.aborted) throw new Error('cancelled');
     const item = subset[i];
-    onProgress?.({ phase: 'fetch', index: i, total: subset.length, item });
+    onProgress?.({ phase: 'fetch', index: i, total: subset.length, item, okCount, totalBytes });
+    const t0 = now();
     try {
       const { bytes } = await fetchBytes(item.url, settings, { signal });
+      const ms = now() - t0;
       let name = buildItemFilename(item, i);
-      while (usedNames.has(name)) name = `dup_${Math.floor(usedNames.size)}_${name}`;
+      while (usedNames.has(name)) name = `dup_${usedNames.size}_${name}`;
       usedNames.add(name);
       zip.file(name, bytes);
-      result.added++;
+      okCount += 1;
+      totalBytes += bytes.byteLength;
+      files.push({ id: item.id, title: item.title, name, ok: true, bytes: bytes.byteLength, ms });
+      onProgress?.({ phase: 'fetched', index: i, total: subset.length, ok: true, bytes: bytes.byteLength, ms, okCount, totalBytes });
     } catch (err) {
-      result.failed.push({ item, error: err?.message ? String(err.message) : String(err) });
+      const ms = now() - t0;
+      const error = err?.message ? String(err.message) : String(err);
+      files.push({ id: item.id, title: item.title, ok: false, bytes: 0, ms, error });
+      onProgress?.({ phase: 'fetched', index: i, total: subset.length, ok: false, error, okCount, totalBytes });
     }
   }
 
-  if (result.added === 0) {
-    throw new Error(`no files could be downloaded (${result.failed.length} failed)`);
+  if (okCount === 0) {
+    throw new Error(`no files could be downloaded (${files.length} failed)`);
   }
   onProgress?.({ phase: 'zip', total: subset.length });
   // STORE (no recompression): Reddit media is already compressed; this is fast and lossless.
@@ -109,5 +129,9 @@ export async function downloadZip(items, settings, opts = {}) {
     (meta) => onProgress?.({ phase: 'compress', percent: meta.percent }),
   );
   saveAs(blob, zipName);
-  return result;
+  const elapsedMs = now() - startedAt;
+  const failed = files
+    .filter((f) => !f.ok)
+    .map((f) => ({ item: { id: f.id, title: f.title }, error: f.error }));
+  return { added: okCount, failed, files, totalBytes, elapsedMs };
 }

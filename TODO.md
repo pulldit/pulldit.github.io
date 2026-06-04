@@ -20,10 +20,10 @@ Two features:
 - [x] B3 `test/reddit.test.js` — assert stats fields
 
 ## Phase C — Download statistics (data layer)
-- [ ] C1 `src/download.js` — downloadZip returns per-file `files[]` + totalBytes + elapsedMs,
+- [x] C1 `src/download.js` — downloadZip returns per-file `files[]` + totalBytes + elapsedMs,
         emits running totals via onProgress; tolerant of per-file failure
-- [ ] C2 `src/download.js` — downloadSingle returns byte count
-- [ ] C3 `test/download.test.js` — keep filename tests green (logic unchanged)
+- [x] C2 `src/download.js` — downloadSingle returns byte count
+- [x] C3 `test/download.test.js` — keep filename tests green (logic unchanged)
 
 ## Phase D — Discard / keep model (controller)
 - [ ] D1 `src/app.js` — discarded Set, showDiscarded toggle; viewItems/keptItems/discardedItems
