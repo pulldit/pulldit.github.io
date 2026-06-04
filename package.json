@@ -1,0 +1,20 @@
+{
+  "name": "redditdownloader",
+  "version": "1.0.0",
+  "description": "Static, browser-only Reddit media downloader with switchable proxy modes (direct / own Cloudflare Worker / public proxy). No backend required.",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "homepage": "https://redditdownloader.github.io/",
+  "scripts": {
+    "check": "node scripts/syntax-check.mjs",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "npm run check && npm run test",
+    "serve": "http-server . -p 8080 -c-1 -s"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1",
+    "vitest": "^4.1.8"
+  }
+}
