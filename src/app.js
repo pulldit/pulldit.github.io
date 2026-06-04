@@ -1011,6 +1011,13 @@ function initExtensionMode() {
     if (available) {
       if (option) option.hidden = false;
       if (hint) hint.hidden = true;
+      // The Extension radio lives inside the collapsible proxy panel — make it discoverable
+      // by opening the panel and pointing the user there (until they actually adopt the mode).
+      if (settings.mode !== ProxyMode.EXTENSION) {
+        const panel = $('proxy-panel');
+        if (panel && !panel.open) panel.open = true;
+        setStatus('Pulldit extension detected ✓ — pick “Pulldit Extension” in the proxy panel for proxy-free ZIP from your own IP.', 'ok');
+      }
     } else {
       if (option) option.hidden = true;
       if (hint) hint.hidden = false;
