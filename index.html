@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -157,7 +157,8 @@
       </fieldset>
     </details>
 
-    <div id="fetch-stats" class="panel statsbox" hidden aria-live="polite"></div>
+    <div id="fetch-stats" class="panel statsbox" aria-live="polite"></div>
+    <div id="download-stats" class="panel statsbox" hidden aria-live="polite"></div>
 
     <section id="results-section" class="panel" hidden aria-live="polite">
       <div class="toolbar">
@@ -177,11 +178,21 @@
         <div id="progress-bar" class="progress-bar"></div>
         <span id="progress-label" class="progress-label"></span>
       </div>
-      <div id="download-stats" class="statsbox" hidden aria-live="polite"></div>
       <ul id="grid" class="grid"></ul>
     </section>
 
     <p id="status" class="status" role="status" aria-live="polite"></p>
+
+    <details id="history-panel" class="panel">
+      <summary>
+        <span class="summary-title history-title">History</span>
+        <span id="history-count" class="badge">0</span>
+      </summary>
+      <div class="history-toolbar">
+        <button id="clear-history" type="button" class="btn ghost">Clear history</button>
+      </div>
+      <ul id="history-list" class="history-list"></ul>
+    </details>
 
     <section id="about" class="panel about">
       <h2>About</h2>
@@ -243,6 +254,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js"></script>
+  <script type="module" src="src/app.js?v=3"></script>
 </body>
 </html>

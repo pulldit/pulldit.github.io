@@ -9,11 +9,13 @@ import { applyFilters, normalizeFilters } from './filters.js';
 import {
   formatBytes, formatDuration, formatSpeed, formatPercent, classifyError, aggregateDownload,
 } from './stats.js';
+import { capList, describeEntry, HISTORY_KEY } from './history.js';
 
 const $ = (id) => document.getElementById(id);
 const SETTINGS_KEY = 'rd.settings.v1';
 const FILTERS_KEY = 'rd.filters.v1';
 const OPTIONS_KEY = 'rd.options.v1';
+const STATS_KEY = 'rd.stats.v1';
 const perf = () => (globalThis.performance && typeof performance.now === 'function' ? performance.now() : 0);
 
 /** @type {Array<object>} full normalized set from the last fetch */
@@ -128,6 +130,102 @@ function applySavedOptions() {
   if (Number.isFinite(lim) && lim >= 1 && lim <= 100) $('limit').value = String(lim);
 }
 
+/* ----------------------------- persisted statistics ----------------------------- */
+
+function loadSavedStats() {
+  try {
+    return JSON.parse(localStorage.getItem(STATS_KEY) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
+
+function saveStatsPatch(patch) {
+  try {
+    localStorage.setItem(STATS_KEY, JSON.stringify({ ...loadSavedStats(), ...patch }));
+  } catch {
+    /* non-fatal */
+  }
+}
+
+/* ----------------------------- history ----------------------------- */
+
+function loadActivity() {
+  try {
+    const a = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+    return Array.isArray(a) ? a : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveActivity() {
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(activity));
+  } catch {
+    /* non-fatal */
+  }
+}
+
+let activity = loadActivity();
+
+function addHistory(entry) {
+  activity = capList([...activity, { ...entry, t: Date.now() }]);
+  saveActivity();
+  renderHistory();
+}
+
+function clearHistory() {
+  activity = [];
+  saveActivity();
+  renderHistory();
+}
+
+function formatTime(t) {
+  try {
+    return new Date(t).toLocaleString();
+  } catch {
+    return '';
+  }
+}
+
+function renderHistory() {
+  const list = $('history-list');
+  list.replaceChildren();
+  $('history-count').textContent = String(activity.length);
+  if (activity.length === 0) {
+    const empty = document.createElement('li');
+    empty.className = 'history-empty';
+    empty.textContent = 'No activity yet.';
+    list.appendChild(empty);
+    return;
+  }
+  for (let i = activity.length - 1; i >= 0; i -= 1) {
+    const e = activity[i];
+    const d = describeEntry(e);
+    const li = document.createElement('li');
+    li.className = 'history-item' + (d.kind === 'good' || d.kind === 'bad' || d.kind === 'warn' ? ' ' + d.kind : '');
+    const time = document.createElement('span');
+    time.className = 'history-time';
+    time.textContent = formatTime(e.t);
+    const icon = document.createElement('span');
+    icon.className = 'history-icon';
+    icon.textContent = d.icon;
+    const text = document.createElement('span');
+    text.className = 'history-text';
+    text.textContent = d.text;
+    li.appendChild(time);
+    li.appendChild(icon);
+    li.appendChild(text);
+    list.appendChild(li);
+  }
+}
+
+function itemTitle(id) {
+  const it = allItems.find((i) => i.id === id);
+  return it ? it.title || it.id : id;
+}
+
 function onFilterChange() {
   const next = {};
   for (const cb of document.querySelectorAll('#filters input[data-filter]')) {
@@ -197,6 +295,7 @@ async function onSearch(event) {
     showDiscarded = false;
     renderFetchStats({ status: 'success', elapsedMs, bytes: meta.bytes, ...stats });
     refreshView();
+    addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: items.length });
     if (items.length === 0) {
       setStatus('No downloadable media found in this listing.', '');
     } else {
@@ -211,6 +310,7 @@ async function onSearch(event) {
       bytes: meta.bytes,
       error: err?.message ? String(err.message) : String(err),
     });
+    addHistory({ type: 'fetch', label: parsed.label, status: reason });
     handleFetchError(err);
   } finally {
     setBusy(false);
@@ -257,6 +357,13 @@ function buildStatGrid(container, title, entries) {
   container.appendChild(grid);
 }
 
+function renderFetchStatsIdle() {
+  buildStatGrid($('fetch-stats'), 'Fetch statistics', [
+    { label: 'Status', value: 'Idle' },
+    { label: 'Tip', value: 'Run a fetch — statistics will appear here.', wide: true },
+  ]);
+}
+
 function renderFetchStats(s) {
   const box = $('fetch-stats');
   box.hidden = false;
@@ -285,6 +392,7 @@ function renderFetchStats(s) {
     entries.push({ label: 'Error', value: s.error, wide: true });
   }
   buildStatGrid(box, 'Fetch statistics', entries);
+  saveStatsPatch({ fetch: s });
 }
 
 function renderDownloadStats(a, opts = {}) {
@@ -312,6 +420,7 @@ function renderDownloadStats(a, opts = {}) {
     if (a.byReason[reason] > 0) entries.push({ label: reason, value: String(a.byReason[reason]), kind: 'bad' });
   }
   buildStatGrid(box, 'Download statistics', entries);
+  saveStatsPatch({ download: { a, elapsedMs: opts.elapsedMs } });
 }
 
 /* ----------------------------- rendering ----------------------------- */
@@ -442,13 +551,16 @@ function toggleSelect(id, on, li) {
 function discardItem(id) {
   discarded.add(id);
   selected.delete(id);
+  addHistory({ type: 'discard', label: itemTitle(id) });
   refreshView();
 }
 function restoreItem(id) {
   discarded.delete(id);
+  addHistory({ type: 'restore', label: itemTitle(id) });
   refreshView();
 }
 function restoreAll() {
+  if (discarded.size) addHistory({ type: 'restore', label: `all (${discarded.size})` });
   discarded.clear();
   refreshView();
 }
@@ -495,6 +607,7 @@ async function onDownloadOne(item, btn) {
   try {
     const r = await downloadSingle(item, settings);
     btn.textContent = r.opened ? 'Opened' : 'Saved ✓';
+    addHistory({ type: 'download', label: item.title || item.id });
   } catch (err) {
     btn.textContent = 'Failed';
     setStatus('Download failed: ' + (err?.message || err), 'error');
@@ -543,6 +656,7 @@ async function onDownloadZip() {
       onProgress: onZipProgress,
     });
     renderDownloadStats(aggregateDownload(result.files, result.elapsedMs), { elapsedMs: result.elapsedMs });
+    addHistory({ type: 'zip', added: result.added, failed: result.failed.length, size: formatBytes(result.totalBytes) });
     const failedNote = result.failed.length ? ` (${result.failed.length} failed)` : '';
     setStatus(`ZIP ready: ${result.added} file(s)${failedNote}.`, 'ok');
   } catch (err) {
@@ -622,6 +736,14 @@ function init() {
   for (const id of ['sort', 'time', 'limit']) {
     $(id).addEventListener('change', saveOptions);
   }
+  const savedStats = loadSavedStats();
+  if (savedStats.fetch) renderFetchStats(savedStats.fetch);
+  else renderFetchStatsIdle();
+  if (savedStats.download && savedStats.download.a) {
+    renderDownloadStats(savedStats.download.a, { elapsedMs: savedStats.download.elapsedMs });
+  }
+  renderHistory();
+  $('clear-history').addEventListener('click', clearHistory);
   syncProxyUi();
 }
 
