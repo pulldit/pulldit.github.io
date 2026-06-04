@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pulldit — CORS / Direct-ZIP Machbarkeitstest</title>
+<!-- Bewusst KEINE strenge CSP: dies ist ein eigenständiges Diagnose-Tool, kein Produktiv-Code. -->
+<style>
+  :root { color-scheme: dark light; }
+  body { font-family: system-ui, Segoe UI, Roboto, sans-serif; max-width: 860px; margin: 0 auto;
+         padding: 1.5rem 1.2rem 4rem; line-height: 1.5; background:#0e1116; color:#e6edf3; }
+  h1 { font-size: 1.4rem; } h2 { font-size: 1.05rem; margin: 1.6rem 0 .4rem; }
+  a { color:#ff8717; }
+  .row { display:flex; gap:.6rem; flex-wrap:wrap; align-items:center; margin:.6rem 0; }
+  input[type=text]{ flex:1 1 320px; padding:.55rem .7rem; border-radius:8px; border:1px solid #2a3340;
+         background:#161b22; color:inherit; font:inherit; }
+  button{ padding:.55rem 1rem; border-radius:8px; border:1px solid #2a3340; background:#1c2330;
+         color:inherit; font:inherit; font-weight:600; cursor:pointer; }
+  button.primary{ background:linear-gradient(135deg,#ff5414,#ff8717); color:#fff; border-color:transparent; }
+  button:disabled{ opacity:.5; cursor:not-allowed; }
+  .check { border:1px solid #2a3340; border-radius:10px; padding:.7rem .9rem; margin:.5rem 0; background:#161b22; }
+  .check .title { font-weight:700; }
+  .check .detail { color:#9aa7b4; font-size:.88rem; margin-top:.25rem; word-break:break-word; }
+  .pass { border-color:#2ea043; } .pass .title::before{ content:"✅ "; }
+  .fail { border-color:#f85149; } .fail .title::before{ content:"❌ "; }
+  .warn { border-color:#d29922; } .warn .title::before{ content:"⚠️ "; }
+  .run  { border-color:#388bfd; } .run  .title::before{ content:"⏳ "; }
+  .verdict { margin-top:1.5rem; padding:1rem; border-radius:12px; font-weight:600; }
+  .verdict.go { background:rgba(46,160,67,.15); border:1px solid #2ea043; }
+  .verdict.no { background:rgba(248,81,73,.15); border:1px solid #f85149; }
+  img.preview{ max-width:120px; max-height:120px; border-radius:8px; vertical-align:middle; margin-left:.5rem; }
+  code{ background:#1c2330; padding:.1em .4em; border-radius:4px; }
+</style>
+</head>
+<body>
+  <h1>Pulldit — CORS / Direct-ZIP Machbarkeitstest</h1>
+  <p>Dieser Test läuft in <strong>deinem</strong> Browser über <strong>deine</strong> IP und prüft, ob
+     Reddit/imgur die nötigen CORS-Header senden, damit <strong>ZIP-Download ganz ohne Proxy</strong>
+     funktionieren kann. Klick auf „Alle Tests starten".</p>
+
+  <div class="row">
+    <button id="run" class="primary">Alle Tests starten</button>
+    <button id="clear">Zurücksetzen</button>
+  </div>
+
+  <h2>Manueller Einzeltest (optional)</h2>
+  <p style="color:#9aa7b4;font-size:.88rem;margin:.2rem 0 .4rem">
+    Wichtig: <strong><code>preview.redd.it</code> ist NICHT die Download-URL</strong> (signierte Vorschau, hotlink-geschützt) —
+    entscheidend ist <strong><code>https://i.redd.it/XXXX.jpg</code></strong>.<br>
+    So bekommst du eine echte i.redd.it-URL: öffne <code>old.reddit.com/r/pics</code>, klick bei einem Bild-Post
+    auf den Titel/das Thumbnail → die Datei öffnet direkt als <code>i.redd.it/…</code>. Diese URL hierher kopieren.</p>
+  <div class="row">
+    <input id="manual" type="text" placeholder="https://i.redd.it/xxxxxxxx.jpg" />
+    <button id="testManual">Diese URL testen</button>
+  </div>
+
+  <div id="results"></div>
+  <div id="verdict"></div>
+
+<script>
+const PROXIES = [
+  (u) => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  (u) => 'https://api.codetabs.com/v1/proxy/?quest=' + encodeURIComponent(u),
+];
+const results = document.getElementById('results');
+const verdictBox = document.getElementById('verdict');
+
+// file:// => origin "null". CORS results are then NOT representative (servers that echo the
+// Origin header, like reddit/allorigins, reject "null"). Force a real http(s) origin.
+if (location.protocol === 'file:') {
+  const b = document.createElement('div');
+  b.className = 'verdict no';
+  b.innerHTML = '<strong>⛔ Über file:// geöffnet — Ergebnisse sind NICHT aussagekräftig.</strong><br>' +
+    'Bitte über einen echten Origin starten:<br>1) In der Pulldit-Prompt: <code>! npm run serve</code><br>' +
+    '2) Dann öffnen: <code>http://localhost:8080/test-cors.html</code><br>' +
+    '(file:// = Origin „null", das blockt Reddit/Proxys künstlich; nur imgur mit „*" käme durch.)';
+  document.body.insertBefore(b, document.getElementById('results'));
+}
+
+function card(title) {
+  const el = document.createElement('div');
+  el.className = 'check run';
+  el.innerHTML = '<div class="title"></div><div class="detail"></div>';
+  el.querySelector('.title').textContent = title;
+  results.appendChild(el);
+  return {
+    set(state, detail, node) {
+      el.className = 'check ' + state;
+      const d = el.querySelector('.detail');
+      d.textContent = detail || '';
+      if (node) d.appendChild(node);
+    },
+  };
+}
+
+// Try to read cross-origin BYTES via fetch(cors). Returns {ok, size, type, status, err}.
+async function tryReadBytes(url) {
+  try {
+    const res = await fetch(url, { mode: 'cors', referrerPolicy: 'no-referrer' });
+    if (!res.ok) return { ok: false, status: res.status, err: 'HTTP ' + res.status };
+    const blob = await res.blob();
+    return { ok: blob.size > 0, size: blob.size, type: blob.type, status: res.status, blob };
+  } catch (e) {
+    return { ok: false, err: String(e && e.message || e) };
+  }
+}
+
+async function getListingViaProxy() {
+  const target = 'https://www.reddit.com/r/pics/hot.json?raw_json=1&limit=50';
+  for (const build of PROXIES) {
+    try {
+      const res = await fetch(build(target), { mode: 'cors' });
+      if (!res.ok) continue;
+      const text = await res.text();
+      const json = JSON.parse(text);
+      return json;
+    } catch { /* next */ }
+  }
+  return null;
+}
+
+function extractReddit(json) {
+  const out = [];
+  const kids = json?.data?.children || [];
+  for (const c of kids) {
+    const d = c?.data || {};
+    const link = d.url_overridden_by_dest || d.url || '';
+    if (/^https:\/\/i\.redd\.it\/[A-Za-z0-9._-]+\.(jpe?g|png|gif|webp)$/i.test(link)) out.push(link);
+    const g = d.media_metadata;
+    if (g) for (const k of Object.keys(g)) {
+      const m = g[k];
+      if (m && m.status === 'valid') {
+        const ext = m.m === 'image/png' ? 'png' : m.m === 'image/gif' ? 'gif' : 'jpg';
+        out.push('https://i.redd.it/' + k + '.' + ext);
+      }
+    }
+  }
+  return [...new Set(out)];
+}
+
+let redditOK = false, imgurOK = false;
+
+async function runAll() {
+  results.replaceChildren();
+  verdictBox.replaceChildren();
+  redditOK = false; imgurOK = false;
+
+  // 1) Direct listing from your IP (does reddit.com/.json work + send CORS for you?)
+  const c1 = card('1) Direktes Reddit-Listing (deine IP, .json mit CORS)');
+  let listing = null;
+  try {
+    const res = await fetch('https://www.reddit.com/r/pics/hot.json?raw_json=1&limit=50', { mode: 'cors' });
+    if (res.ok) {
+      listing = await res.json();
+      c1.set('pass', 'Direktzugriff funktioniert! Reddit liefert dir das Listing MIT CORS (HTTP ' + res.status + ').');
+    } else {
+      c1.set('warn', 'Reddit antwortete HTTP ' + res.status + ' (IP/Anti-Bot). Direct-Listing geht für dich gerade nicht — egal für den ZIP-Test, wir holen eine Bild-URL über einen Proxy.');
+    }
+  } catch (e) {
+    c1.set('warn', 'CORS/Netzwerk-Fehler beim Direktzugriff: ' + (e.message || e) + '. (Egal für den ZIP-Test — wir holen die Bild-URL über einen Proxy.)');
+  }
+
+  // Get real i.redd.it URLs (direct listing if we have it, else via proxy)
+  const cU = card('2) Echte i.redd.it Bild-URL beschaffen');
+  let urls = [];
+  if (listing) urls = extractReddit(listing);
+  if (!urls.length) {
+    const viaProxy = await getListingViaProxy();
+    if (viaProxy) urls = extractReddit(viaProxy);
+  }
+  if (urls.length) cU.set('pass', urls.length + ' Bild-URL(s) gefunden. Teste: ' + urls[0]);
+  else cU.set('fail', 'Keine i.redd.it-URL automatisch gefunden (Reddit blockt evtl. gerade auch die Proxies). Nutze unten den manuellen Einzeltest mit einer selbst kopierten URL.');
+
+  // 3) THE decisive test — read i.redd.it bytes via fetch(cors)
+  const c3 = card('3) ★ i.redd.it Bytes direkt lesen (entscheidet ZIP ohne Proxy)');
+  if (urls.length) {
+    const r = await tryReadBytes(urls[0]);
+    if (r.ok) {
+      redditOK = true;
+      const img = new Image(); img.className = 'preview'; img.src = urls[0];
+      c3.set('pass', `JA! ${r.size.toLocaleString()} Bytes (${r.type}) direkt gelesen → i.redd.it sendet CORS auf 200 → ZIP OHNE Proxy ist möglich.`, img);
+    } else {
+      c3.set('fail', 'Konnte Bytes NICHT lesen: ' + (r.err || ('HTTP ' + r.status)) + ' → i.redd.it sendet auf 200 kein CORS für dich → Proxy bleibt nötig.');
+    }
+  } else {
+    c3.set('warn', 'Übersprungen — keine URL. Bitte manuellen Einzeltest nutzen.');
+  }
+
+  // 4) imgur bytes
+  const c4 = card('4) imgur Bytes direkt lesen');
+  const imgurUrl = 'https://i.imgur.com/2yaf2Tx.png'; // imgur logo-ish stable asset; fallback test
+  const ri = await tryReadBytes(imgurUrl);
+  if (ri.ok) { imgurOK = true; c4.set('pass', `JA! ${ri.size.toLocaleString()} Bytes (${ri.type}) — imgur ist direkt zippbar.`); }
+  else c4.set('warn', 'imgur-Testbild nicht lesbar (' + (ri.err || ('HTTP ' + ri.status)) + '). Ggf. URL veraltet — nicht kritisch.');
+
+  // 5) File System Access API (RipMe-artiger Ordner-Output)
+  const c5 = card('5) File System Access API (Ordner-Output wie RipMe)');
+  if (window.showDirectoryPicker) c5.set('pass', 'Verfügbar → Pulldit könnte Dateien direkt in einen gewählten Ordner schreiben (Chrome/Edge).');
+  else c5.set('warn', 'Nicht verfügbar in diesem Browser (Firefox/Safari). ZIP-Download via Speichern-Dialog bleibt möglich.');
+
+  renderVerdict();
+}
+
+function renderVerdict() {
+  const go = redditOK || imgurOK;
+  const v = document.createElement('div');
+  v.className = 'verdict ' + (go ? 'go' : 'no');
+  if (redditOK) {
+    v.innerHTML = '<strong>GO ✅ — Direct-ZIP ist machbar.</strong><br>i.redd.it liefert die Bytes mit CORS. ' +
+      'Wir können ZIP/Bulk-Download komplett ohne Proxy bauen' + (imgurOK ? ' (imgur ebenfalls)' : '') + '.';
+  } else if (imgurOK) {
+    v.innerHTML = '<strong>Teilweise ⚠️</strong><br>imgur geht direkt, i.redd.it konnte hier nicht bestätigt werden. ' +
+      'Bitte i.redd.it noch per manuellem Einzeltest prüfen, bevor wir entscheiden.';
+  } else {
+    v.innerHTML = '<strong>Noch kein GO ❌</strong><br>Es konnten keine Bytes direkt gelesen werden. ' +
+      'Entweder blockt Reddit gerade alles, oder i.redd.it sendet dir kein CORS — dann bleibt Proxy/Worker nötig ' +
+      'bzw. die Extension-Variante. Probiere den manuellen Einzeltest mit einer frischen URL.';
+  }
+  verdictBox.replaceChildren(v);
+}
+
+async function testManual() {
+  const url = document.getElementById('manual').value.trim();
+  if (!url) return;
+  const c = card('Manueller Test: ' + url);
+  const r = await tryReadBytes(url);
+  if (r.ok) {
+    if (/i\.redd\.it/.test(url)) redditOK = true;
+    if (/imgur/.test(url)) imgurOK = true;
+    const img = new Image(); img.className = 'preview'; img.src = url;
+    c.set('pass', `JA! ${r.size.toLocaleString()} Bytes (${r.type}) direkt gelesen → CORS vorhanden → direkt zippbar.`, img);
+  } else {
+    c.set('fail', 'Bytes NICHT lesbar: ' + (r.err || ('HTTP ' + r.status)) + ' → kein CORS für dich auf dieser URL.');
+  }
+  renderVerdict();
+}
+
+document.getElementById('run').addEventListener('click', runAll);
+document.getElementById('testManual').addEventListener('click', testManual);
+document.getElementById('clear').addEventListener('click', () => { results.replaceChildren(); verdictBox.replaceChildren(); });
+</script>
+</body>
+</html>

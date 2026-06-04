@@ -8,7 +8,7 @@ import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
-const dirs = ['src', 'test', 'worker', 'scripts'];
+const dirs = ['src', 'test', 'worker', 'scripts', 'extension'];
 const ignore = new Set(['node_modules', '.git', 'vendor']);
 
 /** @param {string} dir */
