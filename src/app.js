@@ -815,6 +815,7 @@ async function fetchListing(parsed, baseOpts, meta) {
     }
     dedupCount += fresh;
     setStatus(`Fetching ${parsed.label}… page ${pageCount}, ${dedupCount} item${dedupCount === 1 ? '' : 's'}`);
+    updateFetchProgress(pageCount, dedupCount, target);
 
     if (dedupCount >= target) break; // reached the requested amount
     if (!after) break; // listing ended
@@ -865,6 +866,7 @@ async function onSearch(event) {
   };
 
   setBusy(true);
+  showFetchProgress(true);
   setStatus(`Fetching ${parsed.label}…`);
   const meta = {};
   const t0 = perf();
@@ -896,6 +898,7 @@ async function onSearch(event) {
     addHistory({ type: 'fetch', label: parsed.label, status: reason, sort: opts.sort, time: opts.time, mode: settings.mode });
     handleFetchError(err);
   } finally {
+    showFetchProgress(false);
     setBusy(false);
   }
 }
@@ -1429,6 +1432,31 @@ function showProgress(on) {
     $('progress-bar').style.width = '0%';
     $('progress-label').textContent = 'Starting…';
   }
+}
+
+/** Show/hide the fetch progress bar (starts indeterminate — total is unknown for one request). */
+function showFetchProgress(on) {
+  const el = $('fetch-progress');
+  if (!el) return;
+  el.hidden = !on;
+  if (on) {
+    const bar = $('fetch-progress-bar');
+    bar.style.width = '';
+    bar.style.marginLeft = '';
+    bar.classList.add('indeterminate');
+    $('fetch-progress-label').textContent = 'Fetching…';
+  }
+}
+
+/** Switch the fetch bar to determinate and report paginated progress (items / target). */
+function updateFetchProgress(page, items, target) {
+  const bar = $('fetch-progress-bar');
+  if (!bar) return;
+  bar.classList.remove('indeterminate');
+  bar.style.marginLeft = '0';
+  const pct = Math.min(100, Math.round((items / Math.max(1, target)) * 100));
+  bar.style.width = pct + '%';
+  $('fetch-progress-label').textContent = `Fetching page ${page}… ${items} / ${target} items`;
 }
 
 /* ----------------------------- misc ----------------------------- */

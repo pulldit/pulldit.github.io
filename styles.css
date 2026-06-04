@@ -234,6 +234,10 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .progress { position: relative; height: 26px; background: var(--bg); border: 1px solid var(--border); border-radius: 999px; overflow: hidden; margin-bottom: 1rem; }
 .progress-bar { height: 100%; width: 0; background: linear-gradient(90deg, var(--brand), var(--brand-2)); transition: width 0.2s ease; }
 .progress-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 0.8rem; font-weight: 600; }
+.fetch-progress { margin: 0.8rem 0 0; }
+/* Indeterminate (single-request fetch): a 35%-wide bar sliding across, no known total. */
+.progress-bar.indeterminate { width: 35%; transition: none; animation: progress-indeterminate 1.1s infinite ease-in-out; }
+@keyframes progress-indeterminate { 0% { margin-left: -35%; } 100% { margin-left: 100%; } }
 
 .grid { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.9rem; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); }
 .card { position: relative; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; display: flex; flex-direction: column;
