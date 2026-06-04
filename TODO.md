@@ -51,10 +51,10 @@ public release.
 - [x] 7.5 `.github/dependabot.yml` — weekly dep + actions updates
 
 ## Phase 8 — Docs, license & finalize
-- [ ] 8.1 `LICENSE` (MIT — disclaims warranty & liability)
-- [ ] 8.2 `README.md` — features, security model, proxy modes, run/deploy, About, DISCLAIMER (ToS/copyright/no-liability), badges
-- [ ] 8.3 `.nojekyll` + Pages notes (avoid Jekyll processing)
-- [ ] 8.4 `npm run build` green + manual smoke (serve + load)
+- [x] 8.1 `LICENSE` (MIT — disclaims warranty & liability)
+- [x] 8.2 `README.md` — features, security model, proxy modes, run/deploy, About, DISCLAIMER (ToS/copyright/no-liability), badges
+- [x] 8.3 `.nojekyll` + Pages notes (avoid Jekyll processing)
+- [x] 8.4 `npm run build` green + manual smoke (serve + staged-site load)
 
 ## Phase 9 — Public release / GitHub setup
 - [ ] 9.1 Final commit, tag `v1.0.0`
