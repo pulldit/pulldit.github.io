@@ -105,6 +105,7 @@ export async function downloadSingle(item, settings, opts = {}) {
     const { bytes, contentType } = await fetchBytes(item.url, settings, {
       maxBytes: opts.maxBytes,
       timeoutMs: opts.timeoutMs,
+      signal: opts.signal,
     });
     await assertValidMedia(bytes, opts.validate);
     getSaveAs()(new Blob([bytes], { type: contentType }), filename);
@@ -131,7 +132,7 @@ export async function downloadSingle(item, settings, opts = {}) {
  */
 export async function downloadZip(items, settings, opts = {}) {
   if (!canZip(settings)) throw new Error('ZIP requires a proxy mode (direct mode cannot read bytes)');
-  const { onProgress, signal, zipName = 'reddit-media', limits = {}, validate = null } = opts;
+  const { onProgress, signal, zipName = 'reddit-media', limits = {}, validate = null, pause = null } = opts;
   const maxZipFiles = orDefault(limits.maxZipFiles, LIMITS.maxZipFiles);
   const delayMs = orDefault(limits.delayMs, 0);
   const all = Array.isArray(items) ? items : [];
@@ -156,6 +157,8 @@ export async function downloadZip(items, settings, opts = {}) {
     let batchOk = 0;
 
     for (let j = 0; j < slice.length; j++) {
+      if (signal?.aborted) throw new Error('cancelled');
+      if (pause) await pause(); // block here while the user has paused (rejects if aborted)
       if (signal?.aborted) throw new Error('cancelled');
       const item = slice[j];
       if (delayMs > 0 && processed > 0) await sleep(delayMs, signal); // rate limiter between downloads

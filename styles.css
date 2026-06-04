@@ -118,6 +118,9 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .btn:disabled { opacity: 0.5; cursor: not-allowed; filter: none; }
 .btn.primary { background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; border-color: transparent; }
 .btn.ghost { background: transparent; }
+.btn.danger-outline { color: var(--danger); border-color: var(--danger); background: transparent; }
+.btn.danger-outline:hover { background: rgba(248, 81, 73, 0.12); }
+.dl-controls { display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1rem; }
 
 /* Proxy panel */
 .collapsible > summary {

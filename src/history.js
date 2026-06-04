@@ -41,11 +41,14 @@ export function describeEntry(e) {
   const type = e && e.type;
   if (type === 'fetch') {
     const ok = e.status === 'success';
-    const head = ok ? `${e.found} item${e.found === 1 ? '' : 's'}` : String(e.status || 'failed');
     const detail = joinParts([
       e.sort, e.time ? timeLabel(e.time) : '', e.mode ? MODE_LABELS[e.mode] || e.mode : '',
       Number(e.pages) > 1 ? `${e.pages} pages` : '',
     ]);
+    if (e.status === 'cancelled') {
+      return { icon: '⊘', text: `Fetch stopped: ${e.label}`, detail, kind: 'dim' };
+    }
+    const head = ok ? `${e.found} item${e.found === 1 ? '' : 's'}` : String(e.status || 'failed');
     return { icon: ok ? '✓' : '✕', text: `Fetched ${e.label} — ${head}`, detail, kind: ok ? 'good' : 'bad' };
   }
   if (type === 'download') {

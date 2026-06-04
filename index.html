@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=36" />
+  <link rel="stylesheet" href="styles.css?v=37" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -100,6 +100,7 @@
           <input id="limit" name="limit" type="number" min="1" max="2000" value="50" />
         </label>
         <button id="fetch-btn" type="submit" class="btn primary">Fetch media</button>
+        <button id="fetch-stop" type="button" class="btn ghost danger-outline" hidden>■ Stop</button>
       </div>
       <p id="pagination-hint" class="hint pagination-hint" hidden></p>
       <div id="fetch-progress" class="progress fetch-progress" hidden>
@@ -285,6 +286,10 @@
         <div id="progress-bar" class="progress-bar"></div>
         <span id="progress-label" class="progress-label"></span>
       </div>
+      <div id="dl-controls" class="dl-controls" hidden>
+        <button id="dl-pause" type="button" class="btn ghost">Pause</button>
+        <button id="dl-stop" type="button" class="btn ghost danger-outline">■ Stop</button>
+      </div>
       <ul id="grid" class="grid"></ul>
     </section>
 
@@ -458,6 +463,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=36"></script>
+  <script type="module" src="src/app.js?v=37"></script>
 </body>
 </html>

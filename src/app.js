@@ -51,6 +51,14 @@ let lastFetch = null;
 /** When on, already-downloaded ("✓ saved") items are hidden from the kept view. */
 let hideSaved = false;
 
+/* Cancellation / pause control. Fetch is cancelable; downloads are cancelable AND pausable. */
+let fetchAbort = null;
+let fetchCancelled = false;
+let dlAbort = null;
+let dlPaused = false;
+let dlResumeResolvers = [];
+let dlCancelled = false;
+
 /* ----------------------------- settings ----------------------------- */
 
 function loadSettings() {
@@ -769,7 +777,7 @@ function delay(ms) {
  * @param {{ bytes?: number, pages?: number, partial?: boolean }} meta
  * @returns {Promise<{ items: Array<object>, stats: object }>}
  */
-async function fetchListing(parsed, baseOpts, meta) {
+async function fetchListing(parsed, baseOpts, meta, signal) {
   const wanted = Number($('limit').value) || LIMITS.defaultListingLimit;
   const target = Math.max(1, Math.min(wanted, advanced.maxItems));
   const paginate =
@@ -777,7 +785,7 @@ async function fetchListing(parsed, baseOpts, meta) {
 
   if (!paginate) {
     const url = buildJsonUrl(parsed, { ...baseOpts, limit: Math.min(100, target) });
-    const json = await fetchJson(url, settings, { stats: meta });
+    const json = await fetchJson(url, settings, { stats: meta, signal });
     meta.pages = 1;
     const { items, stats } = normalizeListing(json);
     return { items, stats };
@@ -792,14 +800,15 @@ async function fetchListing(parsed, baseOpts, meta) {
   const maxPages = Math.min(40, Math.ceil(target / 100) + 5); // safety bound for sparse listings
 
   for (;;) {
+    if (signal?.aborted && pages.length > 0) { meta.partial = true; break; } // stopped → keep partial
     const url = buildJsonUrl(parsed, { ...baseOpts, limit: 100, after });
     const pmeta = {};
     let json;
     try {
-      json = await fetchJson(url, settings, { stats: pmeta });
+      json = await fetchJson(url, settings, { stats: pmeta, signal });
     } catch (err) {
-      if (pages.length === 0) throw err; // first page failed → surface the real error
-      meta.partial = true; // a later page failed → keep what we already collected
+      if (pages.length === 0) throw err; // first page failed (or stopped immediately) → surface it
+      meta.partial = true; // a later page failed / was stopped → keep what we already collected
       break;
     }
     pageCount += 1;
@@ -867,13 +876,16 @@ async function onSearch(event) {
     time: $('time').value || undefined,
   };
 
+  fetchCancelled = false;
+  fetchAbort = new AbortController();
   setBusy(true);
   showFetchProgress(true);
+  showFetchStop(true);
   setStatus(`Fetching ${parsed.label}…`);
   const meta = {};
   const t0 = perf();
   try {
-    const { items, stats } = await fetchListing(parsed, opts, meta);
+    const { items, stats } = await fetchListing(parsed, opts, meta, fetchAbort.signal);
     const elapsedMs = perf() - t0;
     allItems = items;
     selected.clear();
@@ -884,24 +896,33 @@ async function onSearch(event) {
     refreshView();
     addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: items.length, sort: opts.sort, time: opts.time, mode: settings.mode, pages: meta.pages });
     if (advanced.autoSaveLinks) addLink(rawInput, parsed.label);
-    const note = meta.partial
-      ? ' — a later page failed, showing partial results'
-      : (meta.pages > 1 ? ` · ${meta.pages} pages` : '');
+    const note = fetchCancelled
+      ? ' — stopped, showing partial results'
+      : (meta.partial
+        ? ' — a later page failed, showing partial results'
+        : (meta.pages > 1 ? ` · ${meta.pages} pages` : ''));
     setStatus(reportFound(items.length) + (items.length === 0 ? '' : note), items.length === 0 ? '' : (keptItems().length ? 'ok' : 'error'));
   } catch (err) {
-    const elapsedMs = perf() - t0;
-    const reason = classifyError(err?.message || err);
-    recordFetchStats({
-      status: reason === 'timeout' ? 'timeout' : 'failed',
-      elapsedMs,
-      bytes: meta.bytes,
-      error: err?.message ? String(err.message) : String(err),
-    });
-    addHistory({ type: 'fetch', label: parsed.label, status: reason, sort: opts.sort, time: opts.time, mode: settings.mode });
-    handleFetchError(err);
+    if (fetchCancelled || isCancel(err)) {
+      addHistory({ type: 'fetch', label: parsed.label, status: 'cancelled', sort: opts.sort, time: opts.time, mode: settings.mode });
+      setStatus('Fetch stopped.', '');
+    } else {
+      const elapsedMs = perf() - t0;
+      const reason = classifyError(err?.message || err);
+      recordFetchStats({
+        status: reason === 'timeout' ? 'timeout' : 'failed',
+        elapsedMs,
+        bytes: meta.bytes,
+        error: err?.message ? String(err.message) : String(err),
+      });
+      addHistory({ type: 'fetch', label: parsed.label, status: reason, sort: opts.sort, time: opts.time, mode: settings.mode });
+      handleFetchError(err);
+    }
   } finally {
     showFetchProgress(false);
+    showFetchStop(false);
     setBusy(false);
+    fetchAbort = null;
   }
 }
 
@@ -1352,25 +1373,44 @@ async function onDownloadSelected() {
   if (resolveProxy(settings).mode === ProxyMode.DIRECT) {
     setStatus(`Opening ${items.length} file(s) in new tabs (Direct mode). Allow pop-ups, or use a proxy + ZIP.`, '');
   }
+  dlCancelled = false;
+  dlPaused = false;
+  dlResumeResolvers = [];
+  dlAbort = new AbortController();
   setBusy(true);
+  showDlControls(true);
   const lim = dlLimits();
   let ok = 0;
+  let processed = 0;
   const saved = [];
-  for (let i = 0; i < items.length; i += 1) {
-    if (lim.delayMs > 0 && i > 0) await new Promise((r) => setTimeout(r, lim.delayMs));
-    try {
-      const r = await downloadSingle(items[i], settings, { maxBytes: lim.maxBytes, timeoutMs: lim.timeoutMs, validate: validateOpts() });
-      ok += 1;
-      if (!r.opened) saved.push(items[i]);
-    } catch {
-      /* keep going */
+  try {
+    for (let i = 0; i < items.length; i += 1) {
+      if (dlAbort.signal.aborted) break;
+      await dlWaitIfPaused(dlAbort.signal); // block while paused (rejects on stop → caught below)
+      if (dlAbort.signal.aborted) break;
+      if (lim.delayMs > 0 && i > 0) await new Promise((r) => setTimeout(r, lim.delayMs));
+      try {
+        const r = await downloadSingle(items[i], settings, { maxBytes: lim.maxBytes, timeoutMs: lim.timeoutMs, validate: validateOpts(), signal: dlAbort.signal });
+        ok += 1;
+        if (!r.opened) saved.push(items[i]);
+      } catch (err) {
+        if (dlCancelled || isCancel(err)) break;
+        /* otherwise keep going */
+      }
+      processed += 1;
     }
+  } catch {
+    /* paused-then-stopped rejects the wait — fall through to the summary */
   }
   if (saved.length) markDownloaded(saved);
+  showDlControls(false);
   setBusy(false);
+  dlAbort = null;
+  dlPaused = false;
   refreshView();
   const skipNote = skipped ? ` · ${skipped} skipped` : '';
-  setStatus(`Processed ${ok}/${items.length} download(s)${skipNote}.`, ok ? 'ok' : 'error');
+  const stopNote = dlCancelled ? ' · stopped' : '';
+  setStatus(`Processed ${ok}/${items.length} download(s)${skipNote}${stopNote}.`, ok ? 'ok' : 'error');
 }
 
 async function onDownloadZip() {
@@ -1380,8 +1420,13 @@ async function onDownloadZip() {
     setStatus(skipped ? `All ${skipped} item(s) were already downloaded — nothing new to zip.` : 'Nothing to zip.', skipped ? '' : 'error');
     return;
   }
+  dlCancelled = false;
+  dlPaused = false;
+  dlResumeResolvers = [];
+  dlAbort = new AbortController();
   setBusy(true);
   showProgress(true);
+  showDlControls(true);
   dlStart = perf();
   try {
     const result = await downloadZip(items, settings, {
@@ -1389,6 +1434,8 @@ async function onDownloadZip() {
       onProgress: onZipProgress,
       limits: dlLimits(),
       validate: validateOpts(),
+      signal: dlAbort.signal,
+      pause: () => dlWaitIfPaused(dlAbort.signal),
     });
     const okIds = new Set(result.files.filter((f) => f.ok).map((f) => f.id));
     markDownloaded(items.filter((it) => okIds.has(it.id)));
@@ -1404,10 +1451,18 @@ async function onDownloadZip() {
     setStatus(`ZIP ready: ${result.added} file(s)${zipsNote}${failedNote}${skipNote}.`, 'ok');
     refreshView();
   } catch (err) {
-    setStatus('ZIP failed: ' + (err?.message || err), 'error');
+    if (dlCancelled || isCancel(err)) {
+      setStatus('Download stopped.', '');
+      refreshView();
+    } else {
+      setStatus('ZIP failed: ' + (err?.message || err), 'error');
+    }
   } finally {
     showProgress(false);
+    showDlControls(false);
     setBusy(false);
+    dlAbort = null;
+    dlPaused = false;
   }
 }
 
@@ -1453,6 +1508,48 @@ function showFetchProgress(on) {
     bar.classList.add('indeterminate');
     $('fetch-progress-label').textContent = 'Fetching…';
   }
+}
+
+/** Show/hide the "Stop" button next to Fetch. */
+function showFetchStop(on) {
+  const b = $('fetch-stop');
+  if (b) b.hidden = !on;
+}
+
+/** Show/hide the download Pause/Stop controls; resets the Pause label when shown. */
+function showDlControls(on) {
+  const c = $('dl-controls');
+  if (c) c.hidden = !on;
+  const p = $('dl-pause');
+  if (p && on) p.textContent = 'Pause';
+}
+
+/** Resolve immediately unless a download is paused; rejects with 'cancelled' if aborted while paused. */
+function dlWaitIfPaused(signal) {
+  if (!dlPaused) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    dlResumeResolvers.push(resolve);
+    if (signal) signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true });
+  });
+}
+
+/** Toggle the paused state, releasing any waiters on resume, and update the button label. */
+function setDlPaused(on) {
+  dlPaused = on;
+  if (!on) {
+    const waiters = dlResumeResolvers;
+    dlResumeResolvers = [];
+    waiters.forEach((fn) => fn());
+  }
+  const p = $('dl-pause');
+  if (p) p.textContent = on ? 'Resume' : 'Pause';
+  if (on) setStatus('Download paused.', '');
+}
+
+/** True when an error represents a user-initiated cancellation/abort. */
+function isCancel(err) {
+  const m = err?.name === 'AbortError' ? 'abort' : String(err?.message || err || '').toLowerCase();
+  return /cancel|abort/.test(m);
 }
 
 /** Switch the fetch bar to determinate and report paginated progress (items / target). */
@@ -1639,6 +1736,17 @@ function init() {
   $('restore-all').addEventListener('click', restoreAll);
   $('download-selected').addEventListener('click', onDownloadSelected);
   $('download-zip').addEventListener('click', onDownloadZip);
+  $('fetch-stop').addEventListener('click', () => {
+    fetchCancelled = true;
+    if (fetchAbort) fetchAbort.abort();
+    setStatus('Stopping fetch…', '');
+  });
+  $('dl-pause').addEventListener('click', () => setDlPaused(!dlPaused));
+  $('dl-stop').addEventListener('click', () => {
+    dlCancelled = true;
+    if (dlAbort) dlAbort.abort(); // also rejects any active pause-wait
+    setStatus('Stopping download…', '');
+  });
   for (const r of document.querySelectorAll('input[name="proxy-mode"]')) {
     r.addEventListener('change', readProxyControls);
   }
