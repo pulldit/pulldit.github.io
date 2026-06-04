@@ -24,8 +24,9 @@ static web server. All work — fetching listings, previewing media, packaging Z
 in the visitor's browser.
 
 The original relied on a third-party CORS proxy (`allOrigins`) that could see all your
-traffic. This rewrite removes that dependency and gives you **three explicit modes**, so you
-choose your own privacy/convenience trade-off.
+traffic. This rewrite removes that hard dependency and gives you **explicit, switchable modes**,
+so you choose your own privacy/convenience trade-off — including an optional **browser extension**
+that fetches everything from your own IP (the most reliable, proxy-free path).
 
 ## Features
 
@@ -47,12 +48,22 @@ sends CORS headers. Reddit's image CDN (`i.redd.it`) does **not**. So images can
 
 | Mode | Bulk ZIP | Who sees your traffic | Setup |
 |------|:--------:|-----------------------|-------|
+| **Pulldit Extension** | ✅ | Only you (your own IP, no relay) | One-time install — see [`extension/`](extension/README.md) |
 | **Direct** (default) | ❌ | Only Reddit | None — most private |
 | **Your Cloudflare Worker** | ✅ | Only you (your own proxy) | ~5 min, free — see [`worker/`](worker/README.md) |
 | **Public CORS proxy** | ✅ | A third party relays it | None — most convenient |
 
 > In **Direct** mode you still get full previews and one-by-one downloads. Only the *bulk ZIP*
-> requires a proxy, and the recommended way to get it safely is your own Cloudflare Worker.
+> requires reading raw bytes, which the browser blocks cross-origin.
+
+### Most reliable: the Pulldit Bridge extension
+
+Reddit also returns `403 Blocked` to **datacenter IPs** — where every public proxy and even a
+Cloudflare Worker live — so those are best-effort. The optional [**Pulldit Bridge**](extension/README.md)
+extension sidesteps both walls: its background worker is exempt from CORS and runs from **your own
+residential IP**, so it fetches the listing JSON (no 403) *and* reads `i.redd.it` bytes (no CORS).
+The website detects the extension automatically and unlocks an **“Extension”** mode — same page,
+same UI, full proxy-free ZIP. It is locked to Reddit/imgur hosts and only serves the Pulldit page.
 
 ## Run locally
 
@@ -102,10 +113,12 @@ src/
   url-guard.js          # URL/host validation, IP checks, filename sanitizing
   reddit.js             # input parsing + listing normalization
   proxy.js              # proxy modes + hardened fetch (timeout, size cap)
+  bridge-client.js      # page-side client for the optional browser extension
   download.js           # single + ZIP downloads
   app.js                # UI controller
 vendor/                 # JSZip + FileSaver (pinned, local)
 worker/                 # optional self-hosted secure proxy (Cloudflare)
+extension/              # optional MV3 browser extension (proxy-free ZIP via your own IP)
 test/                   # vitest suites
 .github/workflows/      # CI, Pages deploy, CodeQL, security scans
 ```
