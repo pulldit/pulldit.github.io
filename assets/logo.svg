@@ -1,14 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Pulldit logo">
   <defs>
-    <linearGradient id="rd-grad" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="pd-bg" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#ff5414"/>
-      <stop offset="1" stop-color="#ff8717"/>
+      <stop offset="1" stop-color="#ff8c1a"/>
+    </linearGradient>
+    <linearGradient id="pd-arrow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#fff1e6"/>
     </linearGradient>
   </defs>
-  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#rd-grad)"/>
-  <g fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M32 13 V39"/>
-    <path d="M20 30 L32 42 L44 30"/>
-    <path d="M16 49 H48"/>
+  <rect x="2" y="2" width="60" height="60" rx="17" fill="url(#pd-bg)"/>
+  <rect x="2" y="2" width="60" height="30" rx="17" fill="#ffffff" opacity="0.10"/>
+  <g fill="url(#pd-arrow)">
+    <rect x="27" y="13" width="10" height="18" rx="2.5"/>
+    <path d="M16.5 27 H47.5 a1.6 1.6 0 0 1 1.2 2.65 L33.4 46.6 a2 2 0 0 1 -2.8 0 L15.3 29.65 A1.6 1.6 0 0 1 16.5 27 Z"/>
   </g>
+  <rect x="16" y="49" width="32" height="6" rx="3" fill="#ffffff"/>
 </svg>
