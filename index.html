@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=16" />
+  <link rel="stylesheet" href="styles.css?v=17" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -216,7 +216,11 @@
         <li><label class="check-row"><input type="checkbox" id="adv-skip" checked /><span><strong>Skip already-downloaded</strong><small>Don’t re-download posts/images you already grabbed (bulk ZIP &amp; “Download selected”).</small></span></label></li>
         <li><label class="check-row"><input type="checkbox" id="adv-count-discarded" /><span><strong>Count discarded as downloaded</strong><small>Items you discard also count as “seen” and get skipped next time.</small></span></label></li>
       </ul>
-      <p class="hint">Everything here is saved locally. Clear the download memory under “Clear stored data”.</p>
+      <p class="hint">Everything here is saved locally and loaded automatically on your next visit.</p>
+      <div class="adv-tools">
+        <button id="clear-data-btn" type="button" class="btn ghost">Clear stored data…</button>
+        <span class="hint adv-tools-hint">Wipe history, links, stats, settings or the download memory from this browser.</span>
+      </div>
     </details>
 
     <details id="fetch-stats-panel" class="panel statsbox collapsible">
@@ -262,9 +266,6 @@
         <span class="summary-title history-title">History</span>
         <span id="history-count" class="badge">0</span>
       </summary>
-      <div class="history-toolbar">
-        <button id="clear-data-btn" type="button" class="btn ghost">Clear stored data…</button>
-      </div>
       <ul id="history-list" class="history-list"></ul>
     </details>
 
@@ -410,6 +411,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=16"></script>
+  <script type="module" src="src/app.js?v=17"></script>
 </body>
 </html>
