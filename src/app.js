@@ -3,22 +3,27 @@
 
 import { APP, LIMITS } from './config.js';
 import { parseInput, buildJsonUrl, normalizeListing } from './reddit.js';
-import { fetchJson } from './proxy.js';
-import { canZip, resolveProxy, ProxyMode } from './proxy.js';
+import { fetchJson, canZip, resolveProxy, ProxyMode } from './proxy.js';
 import { downloadSingle, downloadZip } from './download.js';
 import { applyFilters, normalizeFilters } from './filters.js';
+import {
+  formatBytes, formatDuration, formatSpeed, formatPercent, classifyError, aggregateDownload,
+} from './stats.js';
 
 const $ = (id) => document.getElementById(id);
 const SETTINGS_KEY = 'rd.settings.v1';
 const FILTERS_KEY = 'rd.filters.v1';
+const perf = () => (globalThis.performance && typeof performance.now === 'function' ? performance.now() : 0);
 
 /** @type {Array<object>} full normalized set from the last fetch */
 let allItems = [];
-/** @type {Array<object>} the filtered view currently rendered */
+/** @type {Array<object>} the items currently rendered (kept view or discarded view) */
 let currentItems = [];
-/** @type {Set<string>} */
 const selected = new Set();
+const discarded = new Set();
+let showDiscarded = false;
 let busy = false;
+let dlStart = 0;
 
 /* ----------------------------- settings ----------------------------- */
 
@@ -48,6 +53,30 @@ function saveSettings(s) {
 
 let settings = loadSettings();
 
+function syncProxyUi() {
+  for (const r of document.querySelectorAll('input[name="proxy-mode"]')) {
+    r.checked = r.value === settings.mode;
+  }
+  $('worker-url').value = settings.workerUrl;
+  $('public-proxy').value = settings.publicId;
+
+  const resolved = resolveProxy(settings);
+  const labels = { direct: 'Direct', worker: 'Worker', public: 'Public proxy' };
+  $('proxy-badge').textContent = resolved.ok ? labels[settings.mode] : 'Invalid config';
+
+  $('download-zip').title = canZip(settings)
+    ? 'Download all kept items as one ZIP'
+    : 'ZIP needs a proxy mode (Direct mode cannot read media bytes)';
+  updateToolbar();
+}
+
+function readProxyControls() {
+  const mode = document.querySelector('input[name="proxy-mode"]:checked')?.value || ProxyMode.DIRECT;
+  settings = { mode, workerUrl: $('worker-url').value.trim(), publicId: $('public-proxy').value };
+  saveSettings(settings);
+  syncProxyUi();
+}
+
 /* ----------------------------- filters ----------------------------- */
 
 function loadFilters() {
@@ -62,17 +91,11 @@ function saveFilters() {
   try {
     localStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
   } catch {
-    /* storage unavailable — non-fatal */
+    /* non-fatal */
   }
 }
 
 let filters = loadFilters();
-
-/** Recompute the rendered view from the full set + active filters. */
-function applyCurrentFilters() {
-  currentItems = applyFilters(allItems, filters);
-  renderGrid();
-}
 
 function onFilterChange() {
   const next = {};
@@ -81,40 +104,25 @@ function onFilterChange() {
   }
   filters = normalizeFilters(next);
   saveFilters();
-  applyCurrentFilters();
+  refreshView();
 }
 
-/** Reflect current settings into the proxy controls + ZIP availability. */
-function syncProxyUi() {
-  for (const r of document.querySelectorAll('input[name="proxy-mode"]')) {
-    r.checked = r.value === settings.mode;
-  }
-  $('worker-url').value = settings.workerUrl;
-  $('public-proxy').value = settings.publicId;
+/* ----------------------------- view derivation ----------------------------- */
 
-  const resolved = resolveProxy(settings);
-  const badge = $('proxy-badge');
-  const labels = { direct: 'Direct', worker: 'Worker', public: 'Public proxy' };
-  badge.textContent = resolved.ok ? labels[settings.mode] : 'Invalid config';
-  badge.classList.toggle('tag', false);
-
-  const zipOk = canZip(settings) && currentItems.length > 0;
-  const zipBtn = $('download-zip');
-  zipBtn.disabled = !zipOk || busy;
-  zipBtn.title = canZip(settings)
-    ? 'Download all selected as one ZIP'
-    : 'ZIP needs a proxy mode (Direct mode cannot read media bytes)';
+function viewItems() {
+  return applyFilters(allItems, filters);
+}
+function keptItems() {
+  return viewItems().filter((i) => !discarded.has(i.id));
+}
+function discardedItems() {
+  return viewItems().filter((i) => discarded.has(i.id));
 }
 
-function readProxyControls() {
-  const mode = document.querySelector('input[name="proxy-mode"]:checked')?.value || ProxyMode.DIRECT;
-  settings = {
-    mode,
-    workerUrl: $('worker-url').value.trim(),
-    publicId: $('public-proxy').value,
-  };
-  saveSettings(settings);
-  syncProxyUi();
+function refreshView() {
+  currentItems = showDiscarded ? discardedItems() : keptItems();
+  renderGrid();
+  updateToolbar();
 }
 
 /* ----------------------------- status ----------------------------- */
@@ -146,18 +154,32 @@ async function onSearch(event) {
 
   setBusy(true);
   setStatus(`Fetching ${parsed.label}…`);
+  const meta = {};
+  const t0 = perf();
   try {
-    const json = await fetchJson(jsonUrl, settings);
-    const { items } = normalizeListing(json);
+    const json = await fetchJson(jsonUrl, settings, { stats: meta });
+    const elapsedMs = perf() - t0;
+    const { items, stats } = normalizeListing(json);
     allItems = items;
     selected.clear();
-    applyCurrentFilters();
+    discarded.clear();
+    showDiscarded = false;
+    renderFetchStats({ status: 'success', elapsedMs, bytes: meta.bytes, ...stats });
+    refreshView();
     if (items.length === 0) {
       setStatus('No downloadable media found in this listing.', '');
     } else {
       setStatus(`Found ${items.length} media item${items.length === 1 ? '' : 's'}.`, 'ok');
     }
   } catch (err) {
+    const elapsedMs = perf() - t0;
+    const reason = classifyError(err?.message || err);
+    renderFetchStats({
+      status: reason === 'timeout' ? 'timeout' : 'failed',
+      elapsedMs,
+      bytes: meta.bytes,
+      error: err?.message ? String(err.message) : String(err),
+    });
     handleFetchError(err);
   } finally {
     setBusy(false);
@@ -177,24 +199,102 @@ function handleFetchError(err) {
   }
 }
 
+/* ----------------------------- statistics rendering ----------------------------- */
+
+function buildStatGrid(container, title, entries) {
+  container.replaceChildren();
+  const heading = document.createElement('div');
+  heading.className = 'statsbox-title';
+  heading.textContent = title;
+  container.appendChild(heading);
+
+  const grid = document.createElement('div');
+  grid.className = 'stat-grid';
+  for (const e of entries) {
+    const cell = document.createElement('div');
+    cell.className = 'stat' + (e.kind ? ' ' + e.kind : '') + (e.wide ? ' wide' : '');
+    const label = document.createElement('span');
+    label.className = 'stat-label';
+    label.textContent = e.label;
+    const value = document.createElement('span');
+    value.className = 'stat-value';
+    value.textContent = e.value;
+    cell.appendChild(label);
+    cell.appendChild(value);
+    grid.appendChild(cell);
+  }
+  container.appendChild(grid);
+}
+
+function renderFetchStats(s) {
+  const box = $('fetch-stats');
+  box.hidden = false;
+  const entries = [];
+  if (s.status === 'success') entries.push({ label: 'Status', value: 'Success', kind: 'good' });
+  else if (s.status === 'timeout') entries.push({ label: 'Status', value: 'Timeout', kind: 'bad' });
+  else entries.push({ label: 'Status', value: 'Failed', kind: 'bad' });
+
+  entries.push({ label: 'Time', value: formatDuration(s.elapsedMs) });
+  if (Number.isFinite(s.bytes)) entries.push({ label: 'Listing size', value: formatBytes(s.bytes) });
+
+  if (s.status === 'success') {
+    entries.push({ label: 'Posts scanned', value: String(s.postsScanned ?? 0) });
+    entries.push({ label: 'With media', value: String(s.postsWithMedia ?? 0) });
+    entries.push({ label: 'No media', value: String(s.dropped ?? 0) });
+    entries.push({ label: 'Galleries', value: String(s.galleries ?? 0) });
+    entries.push({ label: 'Media found', value: String(s.found ?? 0), kind: 'accent' });
+    entries.push({ label: 'Images', value: String(s.byType?.image ?? 0) });
+    entries.push({ label: 'GIFs', value: String(s.byType?.gif ?? 0) });
+    entries.push({ label: 'Videos', value: String(s.byType?.video ?? 0) });
+    entries.push({ label: 'Reddit', value: String(s.bySource?.reddit ?? 0) });
+    entries.push({ label: 'imgur', value: String(s.bySource?.imgur ?? 0) });
+    if (s.nsfw) entries.push({ label: 'NSFW', value: String(s.nsfw), kind: 'warn' });
+    if (s.capped) entries.push({ label: 'Capped at', value: String(LIMITS.maxItems), kind: 'warn' });
+  } else if (s.error) {
+    entries.push({ label: 'Error', value: s.error, wide: true });
+  }
+  buildStatGrid(box, 'Fetch statistics', entries);
+}
+
+function renderDownloadStats(a, opts = {}) {
+  const box = $('download-stats');
+  box.hidden = false;
+  const entries = [];
+  if (opts.live) {
+    entries.push({ label: 'Progress', value: `${a.processed} / ${a.total}` });
+    entries.push({ label: 'Succeeded', value: String(a.success), kind: 'good' });
+    if (a.failed) entries.push({ label: 'Failed', value: String(a.failed), kind: 'bad' });
+    entries.push({ label: 'Downloaded', value: formatBytes(a.totalBytes), kind: 'accent' });
+    entries.push({ label: 'Speed', value: formatSpeed(a.avgSpeed) });
+    buildStatGrid(box, 'Downloading…', entries);
+    return;
+  }
+  entries.push({ label: 'Total', value: String(a.total) });
+  entries.push({ label: 'Succeeded', value: String(a.success), kind: 'good' });
+  entries.push({ label: 'Failed', value: String(a.failed), kind: a.failed ? 'bad' : '' });
+  entries.push({ label: 'Success rate', value: formatPercent(a.success, a.total) });
+  entries.push({ label: 'Downloaded', value: formatBytes(a.totalBytes), kind: 'accent' });
+  entries.push({ label: 'Largest file', value: formatBytes(a.largest) });
+  if (Number.isFinite(opts.elapsedMs)) entries.push({ label: 'Elapsed', value: formatDuration(opts.elapsedMs) });
+  entries.push({ label: 'Avg speed', value: formatSpeed(a.avgSpeed) });
+  for (const reason of Object.keys(a.byReason)) {
+    if (a.byReason[reason] > 0) entries.push({ label: reason, value: String(a.byReason[reason]), kind: 'bad' });
+  }
+  buildStatGrid(box, 'Download statistics', entries);
+}
+
 /* ----------------------------- rendering ----------------------------- */
 
-const TYPE_ICON = { image: '🖼', gif: 'GIF', video: '▶' };
+const TYPE_ICON = { image: 'IMG', gif: 'GIF', video: 'VID' };
 
 function renderGrid() {
   const grid = $('grid');
   grid.replaceChildren();
-  const section = $('results-section');
-  section.hidden = allItems.length === 0;
-
-  for (const item of currentItems) {
-    grid.appendChild(renderCard(item));
-  }
-  updateCount();
-  syncProxyUi();
+  $('results-section').hidden = allItems.length === 0;
+  for (const item of currentItems) grid.appendChild(renderCard(item, showDiscarded));
 }
 
-function renderCard(item) {
+function renderCard(item, isDiscardedView) {
   const li = document.createElement('li');
   li.className = 'card';
   li.dataset.id = item.id;
@@ -202,13 +302,33 @@ function renderCard(item) {
   const media = document.createElement('div');
   media.className = 'card-media';
 
-  const check = document.createElement('input');
-  check.type = 'checkbox';
-  check.className = 'card-check';
-  check.checked = selected.has(item.id);
-  check.setAttribute('aria-label', 'Select ' + (item.title || item.id));
-  check.addEventListener('change', () => toggleSelect(item.id, check.checked, li));
-  media.appendChild(check);
+  if (isDiscardedView) {
+    const restore = document.createElement('button');
+    restore.type = 'button';
+    restore.className = 'card-restore';
+    restore.textContent = '↺';
+    restore.title = 'Restore';
+    restore.setAttribute('aria-label', 'Restore ' + (item.title || item.id));
+    restore.addEventListener('click', () => restoreItem(item.id));
+    media.appendChild(restore);
+  } else {
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    check.className = 'card-check';
+    check.checked = selected.has(item.id);
+    check.setAttribute('aria-label', 'Select ' + (item.title || item.id));
+    check.addEventListener('change', () => toggleSelect(item.id, check.checked, li));
+    media.appendChild(check);
+
+    const discard = document.createElement('button');
+    discard.type = 'button';
+    discard.className = 'card-discard';
+    discard.textContent = '✕';
+    discard.title = 'Discard';
+    discard.setAttribute('aria-label', 'Discard ' + (item.title || item.id));
+    discard.addEventListener('click', () => discardItem(item.id));
+    media.appendChild(discard);
+  }
 
   const thumbUrl = item.thumbnail || (item.type !== 'video' ? item.url : '');
   if (thumbUrl) {
@@ -246,26 +366,26 @@ function renderCard(item) {
   title.textContent = item.title || item.id;
   body.appendChild(title);
 
-  const actions = document.createElement('div');
-  actions.className = 'card-actions';
-
-  const dl = document.createElement('button');
-  dl.type = 'button';
-  dl.className = 'btn';
-  dl.textContent = 'Download';
-  dl.addEventListener('click', () => onDownloadOne(item, dl));
-  actions.appendChild(dl);
-
-  if (item.permalink) {
-    const open = document.createElement('a');
-    open.className = 'btn ghost';
-    open.textContent = 'Post';
-    open.href = item.permalink;
-    open.target = '_blank';
-    open.rel = 'noopener noreferrer';
-    actions.appendChild(open);
+  if (!isDiscardedView) {
+    const actions = document.createElement('div');
+    actions.className = 'card-actions';
+    const dl = document.createElement('button');
+    dl.type = 'button';
+    dl.className = 'btn';
+    dl.textContent = 'Download';
+    dl.addEventListener('click', () => onDownloadOne(item, dl));
+    actions.appendChild(dl);
+    if (item.permalink) {
+      const open = document.createElement('a');
+      open.className = 'btn ghost';
+      open.textContent = 'Post';
+      open.href = item.permalink;
+      open.target = '_blank';
+      open.rel = 'noopener noreferrer';
+      actions.appendChild(open);
+    }
+    body.appendChild(actions);
   }
-  body.appendChild(actions);
 
   li.appendChild(media);
   li.appendChild(body);
@@ -283,20 +403,55 @@ function toggleSelect(id, on, li) {
   if (on) selected.add(id);
   else selected.delete(id);
   li.classList.toggle('selected', on);
-  updateCount();
+  updateToolbar();
 }
 
-function updateCount() {
-  const n = currentItems.length;
-  const total = allItems.length;
+/* ----------------------------- discard ----------------------------- */
+
+function discardItem(id) {
+  discarded.add(id);
+  selected.delete(id);
+  refreshView();
+}
+function restoreItem(id) {
+  discarded.delete(id);
+  refreshView();
+}
+function restoreAll() {
+  discarded.clear();
+  refreshView();
+}
+function toggleDiscardedView() {
+  showDiscarded = !showDiscarded;
+  refreshView();
+}
+
+function updateToolbar() {
+  const kept = keptItems().length;
+  const disc = discardedItems().length;
   const sel = selected.size;
-  const shown = n < total ? `${n} of ${total}` : `${n}`;
-  $('count').textContent = `${shown} item${total === 1 ? '' : 's'}${sel ? ` · ${sel} selected` : ''}`;
+
+  $('count').textContent = showDiscarded
+    ? `${disc} discarded`
+    : `${kept} item${kept === 1 ? '' : 's'}${sel ? ` · ${sel} selected` : ''}${disc ? ` · ${disc} discarded` : ''}`;
+
+  const toggle = $('toggle-discarded');
+  toggle.hidden = disc === 0 && !showDiscarded;
+  toggle.textContent = showDiscarded ? 'Back to kept' : `Show discarded (${disc})`;
+
+  $('restore-all').hidden = !(showDiscarded && disc > 0);
+  $('select-all').hidden = showDiscarded;
+  $('select-none').hidden = showDiscarded;
+  $('download-selected').hidden = showDiscarded;
+
+  const zipBtn = $('download-zip');
+  zipBtn.hidden = showDiscarded;
+  zipBtn.disabled = !(canZip(settings) && kept > 0) || busy;
 }
 
 function selectedItems() {
-  const set = selected.size ? selected : null;
-  return set ? currentItems.filter((i) => set.has(i.id)) : currentItems;
+  const pool = keptItems();
+  return selected.size ? pool.filter((i) => selected.has(i.id)) : pool;
 }
 
 /* ----------------------------- downloads ----------------------------- */
@@ -332,7 +487,7 @@ async function onDownloadSelected() {
   for (const item of items) {
     try {
       await downloadSingle(item, settings);
-      ok++;
+      ok += 1;
     } catch {
       /* keep going */
     }
@@ -345,18 +500,20 @@ async function onDownloadZip() {
   if (busy || !canZip(settings)) return;
   const items = selectedItems();
   if (!items.length) {
-    setStatus('Nothing selected to zip.', 'error');
+    setStatus('Nothing to zip.', 'error');
     return;
   }
   setBusy(true);
   showProgress(true);
+  dlStart = perf();
   try {
     const result = await downloadZip(items, settings, {
-      zipName: `reddit-media-${items.length}.zip`,
+      zipName: `pulldit-${items.length}.zip`,
       onProgress: onZipProgress,
     });
+    renderDownloadStats(aggregateDownload(result.files, result.elapsedMs), { elapsedMs: result.elapsedMs });
     const failedNote = result.failed.length ? ` (${result.failed.length} failed)` : '';
-    setStatus(`ZIP ready: ${result.added} file(s) added${failedNote}.`, 'ok');
+    setStatus(`ZIP ready: ${result.added} file(s)${failedNote}.`, 'ok');
   } catch (err) {
     setStatus('ZIP failed: ' + (err?.message || err), 'error');
   } finally {
@@ -369,11 +526,19 @@ function onZipProgress(e) {
   const bar = $('progress-bar');
   const label = $('progress-label');
   if (e.phase === 'fetch') {
-    const pct = Math.round(((e.index + 1) / e.total) * 90);
-    bar.style.width = pct + '%';
+    bar.style.width = Math.round((e.index / e.total) * 90) + '%';
     label.textContent = `Downloading ${e.index + 1} / ${e.total}…`;
+  } else if (e.phase === 'fetched') {
+    const done = e.index + 1;
+    bar.style.width = Math.round((done / e.total) * 90) + '%';
+    const elapsed = perf() - dlStart;
+    const speed = elapsed > 0 ? e.totalBytes / (elapsed / 1000) : 0;
+    renderDownloadStats(
+      { processed: done, total: e.total, success: e.okCount, failed: done - e.okCount, totalBytes: e.totalBytes, avgSpeed: speed },
+      { live: true },
+    );
   } else if (e.phase === 'compress') {
-    bar.style.width = (90 + Math.round((e.percent || 0) * 0.1)) + '%';
+    bar.style.width = 90 + Math.round((e.percent || 0) * 0.1) + '%';
     label.textContent = 'Packing ZIP…';
   } else if (e.phase === 'zip') {
     label.textContent = 'Packing ZIP…';
@@ -395,20 +560,22 @@ function setBusy(on) {
   busy = on;
   $('fetch-btn').disabled = on;
   $('fetch-btn').textContent = on ? 'Fetching…' : 'Fetch media';
-  syncProxyUi();
+  updateToolbar();
 }
 
 function init() {
   document.title = `${APP.name} — ${APP.tagline}`;
   $('search-form').addEventListener('submit', onSearch);
   $('select-all').addEventListener('click', () => {
-    currentItems.forEach((i) => selected.add(i.id));
-    renderGrid();
+    keptItems().forEach((i) => selected.add(i.id));
+    refreshView();
   });
   $('select-none').addEventListener('click', () => {
     selected.clear();
-    renderGrid();
+    refreshView();
   });
+  $('toggle-discarded').addEventListener('click', toggleDiscardedView);
+  $('restore-all').addEventListener('click', restoreAll);
   $('download-selected').addEventListener('click', onDownloadSelected);
   $('download-zip').addEventListener('click', onDownloadZip);
   for (const r of document.querySelectorAll('input[name="proxy-mode"]')) {

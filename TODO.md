@@ -26,19 +26,19 @@ Two features:
 - [x] C3 `test/download.test.js` — keep filename tests green (logic unchanged)
 
 ## Phase D — Discard / keep model (controller)
-- [ ] D1 `src/app.js` — discarded Set, showDiscarded toggle; viewItems/keptItems/discardedItems
-- [ ] D2 `src/app.js` — per-card discard (✕) + restore; downloads operate on kept set
-- [ ] D3 `src/app.js` — discard control bar (kept/discarded counts, show/restore)
+- [x] D1 `src/app.js` — discarded Set, showDiscarded toggle; viewItems/keptItems/discardedItems
+- [x] D2 `src/app.js` — per-card discard (✕) + restore; downloads operate on kept set
+- [x] D3 `src/app.js` — discard control bar (kept/discarded counts, show/restore)
 
 ## Phase E — UI (markup + styles)
-- [ ] E1 `index.html` — stats panel (fetch + download) + discard bar + per-card discard button
-- [ ] E2 `styles.css` — stats grid, discard bar, dimmed discarded cards
+- [x] E1 `index.html` — stats panel (fetch + download) + discard bar + per-card discard button
+- [x] E2 `styles.css` — stats grid, discard bar, dimmed discarded cards
 
 ## Phase F — Wire it all (controller)
-- [ ] F1 `src/app.js` — fetch: measure time, render fetch stats
-- [ ] F2 `src/app.js` — ZIP/selected: live + final download stats, per-file reasons
-- [ ] F3 `src/app.js` — keep selection/filters/discard consistent; persist nothing fragile
+- [x] F1 `src/app.js` — fetch: measure time, render fetch stats
+- [x] F2 `src/app.js` — ZIP/selected: live + final download stats, per-file reasons
+- [x] F3 `src/app.js` — keep selection/filters/discard consistent; persist nothing fragile
 
 ## Phase G — Verify & ship
-- [ ] G1 `npm run build` green + control-char scan + local serve smoke
-- [ ] G2 commit + push each phase; confirm Pages deploy + 0 alerts
+- [x] G1 `npm run build` green + control-char scan + local serve smoke
+- [x] G2 commit + push each phase; confirm Pages deploy + 0 alerts

@@ -99,6 +99,19 @@
       </div>
     </form>
 
+    <section class="panel filters-panel">
+      <div class="filters" id="filters">
+        <span class="filters-label">Show types:</span>
+        <label class="chip"><input type="checkbox" data-filter="image" checked /> Images</label>
+        <label class="chip"><input type="checkbox" data-filter="gif" checked /> GIFs</label>
+        <label class="chip"><input type="checkbox" data-filter="video" checked /> Videos</label>
+        <span class="filters-label">Sources:</span>
+        <label class="chip"><input type="checkbox" data-filter="reddit" checked /> Reddit</label>
+        <label class="chip"><input type="checkbox" data-filter="imgur" checked /> imgur</label>
+      </div>
+      <p class="hint">Filters apply to the results — set them before or after fetching.</p>
+    </section>
+
     <details id="proxy-panel" class="panel">
       <summary>
         <span class="summary-title">Proxy &amp; download mode</span>
@@ -144,20 +157,15 @@
       </fieldset>
     </details>
 
+    <div id="fetch-stats" class="panel statsbox" hidden aria-live="polite"></div>
+
     <section id="results-section" class="panel" hidden aria-live="polite">
-      <div class="filters" id="filters">
-        <span class="filters-label">Show types:</span>
-        <label class="chip"><input type="checkbox" data-filter="image" checked /> Images</label>
-        <label class="chip"><input type="checkbox" data-filter="gif" checked /> GIFs</label>
-        <label class="chip"><input type="checkbox" data-filter="video" checked /> Videos</label>
-        <span class="filters-label">Sources:</span>
-        <label class="chip"><input type="checkbox" data-filter="reddit" checked /> Reddit</label>
-        <label class="chip"><input type="checkbox" data-filter="imgur" checked /> imgur</label>
-      </div>
       <div class="toolbar">
         <div class="toolbar-left">
           <button id="select-all" type="button" class="btn ghost">Select all</button>
           <button id="select-none" type="button" class="btn ghost">Clear</button>
+          <button id="toggle-discarded" type="button" class="btn ghost" hidden>Show discarded</button>
+          <button id="restore-all" type="button" class="btn ghost" hidden>Restore all</button>
           <span id="count" class="count">0 items</span>
         </div>
         <div class="toolbar-right">
@@ -169,6 +177,7 @@
         <div id="progress-bar" class="progress-bar"></div>
         <span id="progress-label" class="progress-label"></span>
       </div>
+      <div id="download-stats" class="statsbox" hidden aria-live="polite"></div>
       <ul id="grid" class="grid"></ul>
     </section>
 
