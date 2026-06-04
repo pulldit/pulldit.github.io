@@ -11,8 +11,14 @@
 
 import { LIMITS, PUBLIC_PROXIES } from './config.js';
 import { parseHttpUrl, isUnsafeHost } from './url-guard.js';
+import { extensionFetchJson, extensionFetchBytes } from './bridge-client.js';
 
-export const ProxyMode = Object.freeze({ DIRECT: 'direct', WORKER: 'worker', PUBLIC: 'public' });
+export const ProxyMode = Object.freeze({
+  DIRECT: 'direct',
+  WORKER: 'worker',
+  PUBLIC: 'public',
+  EXTENSION: 'extension',
+});
 
 /**
  * Validate + normalize a user-supplied Cloudflare Worker base URL.
@@ -42,6 +48,7 @@ export function getPublicProxy(id) {
 export function resolveProxy(settings) {
   const mode = settings?.mode || ProxyMode.DIRECT;
   if (mode === ProxyMode.DIRECT) return { ok: true, mode, zip: false };
+  if (mode === ProxyMode.EXTENSION) return { ok: true, mode, zip: true };
   if (mode === ProxyMode.WORKER) {
     const base = normalizeWorkerUrl(settings?.workerUrl || '');
     if (!base) return { ok: false, reason: 'invalid worker URL' };
@@ -71,7 +78,9 @@ export function canZip(settings) {
 export function buildProxiedUrl(targetUrl, settings) {
   const r = resolveProxy(settings);
   if (!r.ok) return null;
-  if (r.mode === ProxyMode.DIRECT) return targetUrl;
+  // Direct and Extension both target Reddit/CDN URLs verbatim (the extension wraps nothing —
+  // the background worker fetches the raw URL).
+  if (r.mode === ProxyMode.DIRECT || r.mode === ProxyMode.EXTENSION) return targetUrl;
   if (r.mode === ProxyMode.WORKER) {
     const sep = r.base.includes('?') ? '&' : '?';
     return `${r.base}${sep}url=${encodeURIComponent(targetUrl)}`;
@@ -160,6 +169,19 @@ export function classifyBlockText(text) {
 }
 
 /**
+ * Parse a listing response body into JSON, or throw a precise block/limit error. Shared by
+ * every transport (direct, public proxy, extension).
+ * @param {string} text
+ */
+export function parseListingText(text) {
+  try {
+    return JSON.parse(text);
+  } catch {
+    throw new Error(classifyBlockText(text));
+  }
+}
+
+/**
  * Single listing attempt against one fully-built (already proxied) URL.
  * @param {string} targetUrl
  * @param {{ timeoutMs?: number, signal?: AbortSignal }} opts
@@ -170,11 +192,7 @@ async function attemptListing(targetUrl, opts) {
   if (!res.ok) throw new Error(`Reddit request failed (HTTP ${res.status})`);
   const bytes = await readCapped(res, 16 * 1024 * 1024); // 16 MB cap for a listing
   const text = new TextDecoder('utf-8').decode(bytes);
-  try {
-    return { json: JSON.parse(text), bytes: bytes.byteLength };
-  } catch {
-    throw new Error(classifyBlockText(text));
-  }
+  return { json: parseListingText(text), bytes: bytes.byteLength };
 }
 
 /**
@@ -191,6 +209,14 @@ async function attemptListing(targetUrl, opts) {
 export async function fetchJson(jsonUrl, settings, opts = {}) {
   const r = resolveProxy(settings);
   if (!r.ok) throw new Error('invalid proxy configuration');
+
+  if (r.mode === ProxyMode.EXTENSION) {
+    const { body, bytes, httpOk, status } = await extensionFetchJson(jsonUrl, opts);
+    if (!httpOk) throw new Error(`Reddit request failed (HTTP ${status})`);
+    const json = parseListingText(body);
+    if (opts.stats && typeof opts.stats === 'object') opts.stats.bytes = bytes;
+    return json;
+  }
 
   if (r.mode === ProxyMode.PUBLIC) {
     // Selected proxy first, then the remaining ones as automatic fallback.
@@ -230,6 +256,13 @@ export async function fetchBytes(mediaUrl, settings, opts = {}) {
   if (!r.ok) throw new Error(r.reason);
   if (r.mode === ProxyMode.DIRECT) {
     throw new Error('reading media bytes requires a proxy (direct mode can only open files)');
+  }
+  if (r.mode === ProxyMode.EXTENSION) {
+    const maxBytes = opts.maxBytes ?? LIMITS.maxFileBytes;
+    const { bytes, contentType, httpOk, status } = await extensionFetchBytes(mediaUrl, { ...opts, maxBytes });
+    if (!httpOk) throw new Error(`download failed (HTTP ${status})`);
+    if (bytes.byteLength > maxBytes) throw new Error(`file exceeds ${maxBytes} byte limit`);
+    return { bytes, contentType };
   }
   const target = buildProxiedUrl(mediaUrl, settings);
   if (!target) throw new Error('invalid proxy configuration');

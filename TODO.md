@@ -27,13 +27,13 @@ Page still works fully without the extension (direct / public / worker modes unc
 - [x] build + commit
 
 ## Phase 2 — Page-side transport + proxy routing
-- [ ] `src/bridge-client.js` — detectExtension(), extensionFetchJson(), extensionFetchBytes(),
+- [x] `src/bridge-client.js` — detectExtension(), extensionFetchJson(), extensionFetchBytes(),
       b64ToBytes() — all window access guarded so it imports cleanly under node
-- [ ] `src/proxy.js` — add `ProxyMode.EXTENSION`; resolveProxy/canZip/buildProxiedUrl; route
+- [x] `src/proxy.js` — add `ProxyMode.EXTENSION`; resolveProxy/canZip/buildProxiedUrl; route
       fetchJson/fetchBytes via the bridge; extract `parseListingText()` helper (reused by all modes)
-- [ ] `test/proxy.test.js` — extension-mode tests (mock bridge-client): resolve/zip + fetchJson/fetchBytes
-- [ ] `test/bridge-client.test.js` — b64ToBytes roundtrip + ping/fetch correlation via a fake window
-- [ ] build + commit
+- [x] `test/proxy.test.js` — extension-mode tests (mock bridge-client): resolve/zip + fetchJson/fetchBytes
+- [x] `test/bridge-client.test.js` — b64ToBytes roundtrip + ping/fetch correlation via a fake window
+- [x] build + commit
 
 ## Phase 3 — UI wiring (detect + new mode)
 - [ ] `index.html` — extension radio (hidden until detected) + install hint (shown when absent);

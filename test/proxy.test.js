@@ -9,9 +9,19 @@ import {
   fetchJson,
   fetchBytes,
   classifyBlockText,
+  parseListingText,
 } from '../src/proxy.js';
+import { extensionFetchJson, extensionFetchBytes } from '../src/bridge-client.js';
 
-afterEach(() => vi.unstubAllGlobals());
+vi.mock('../src/bridge-client.js', () => ({
+  extensionFetchJson: vi.fn(),
+  extensionFetchBytes: vi.fn(),
+}));
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.clearAllMocks();
+});
 
 describe('normalizeWorkerUrl', () => {
   it('accepts a public https worker and upgrades scheme', () => {
@@ -124,6 +134,54 @@ describe('classifyBlockText', () => {
   });
   it('falls back to a generic not-JSON message', () => {
     expect(classifyBlockText('garbage')).toMatch(/did not return JSON/i);
+  });
+});
+
+describe('extension mode', () => {
+  const ext = { mode: 'extension' };
+
+  it('resolves with zip enabled', () => {
+    expect(resolveProxy(ext)).toMatchObject({ ok: true, mode: 'extension', zip: true });
+    expect(canZip(ext)).toBe(true);
+  });
+  it('passes the target URL through unchanged', () => {
+    expect(buildProxiedUrl('https://i.redd.it/x.jpg', ext)).toBe('https://i.redd.it/x.jpg');
+  });
+  it('fetchJson routes through the extension and reports bytes', async () => {
+    const payload = { data: { children: [], after: null } };
+    extensionFetchJson.mockResolvedValue({ body: JSON.stringify(payload), bytes: 123, httpOk: true, status: 200 });
+    const stats = {};
+    const out = await fetchJson('https://www.reddit.com/r/aww/hot.json', ext, { stats });
+    expect(out).toEqual(payload);
+    expect(stats.bytes).toBe(123);
+    expect(extensionFetchJson).toHaveBeenCalledWith('https://www.reddit.com/r/aww/hot.json', { stats });
+  });
+  it('fetchJson throws on a non-OK upstream status', async () => {
+    extensionFetchJson.mockResolvedValue({ body: '', bytes: 0, httpOk: false, status: 403 });
+    await expect(fetchJson('https://www.reddit.com/r/aww/hot.json', ext)).rejects.toThrow(/403/);
+  });
+  it('fetchJson classifies a blocked HTML body', async () => {
+    extensionFetchJson.mockResolvedValue({ body: '<html>Blocked</html>', bytes: 20, httpOk: true, status: 200 });
+    await expect(fetchJson('https://www.reddit.com/r/aww/hot.json', ext)).rejects.toThrow(/block/i);
+  });
+  it('fetchBytes returns decoded bytes + content-type', async () => {
+    extensionFetchBytes.mockResolvedValue({ bytes: new Uint8Array([9, 8, 7]), contentType: 'image/png', httpOk: true, status: 200 });
+    const out = await fetchBytes('https://i.redd.it/a.jpg', ext);
+    expect(Array.from(out.bytes)).toEqual([9, 8, 7]);
+    expect(out.contentType).toBe('image/png');
+  });
+  it('fetchBytes enforces the size cap', async () => {
+    extensionFetchBytes.mockResolvedValue({ bytes: new Uint8Array(100), contentType: 'image/png', httpOk: true, status: 200 });
+    await expect(fetchBytes('https://i.redd.it/a.jpg', ext, { maxBytes: 10 })).rejects.toThrow(/limit/);
+  });
+});
+
+describe('parseListingText', () => {
+  it('parses valid JSON', () => {
+    expect(parseListingText('{"a":1}')).toEqual({ a: 1 });
+  });
+  it('throws a classified error on non-JSON', () => {
+    expect(() => parseListingText('<html>whoa there</html>')).toThrow(/block/i);
   });
 });
 
