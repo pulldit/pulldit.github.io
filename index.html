@@ -277,13 +277,28 @@
       <h3>How it works</h3>
       <ul>
         <li>It reads Reddit's public <code>.json</code> listing for the post, subreddit or
-          user you enter, then shows the media it finds.</li>
-        <li>In <strong>Direct</strong> mode nothing but Reddit is contacted. Bulk ZIP needs to
-          read raw bytes, which browsers block cross-origin — so ZIP requires a proxy.</li>
-        <li>For ZIP you can run <strong>your own Cloudflare Worker</strong> (locked to
-          <code>*.redd.it</code>) or pick a public proxy. Your choice is remembered locally.</li>
+          user you enter, then shows the media it finds. Previews are small thumbnails so a grid
+          of hundreds of images stays fast — <strong>downloads &amp; ZIPs are always the full-quality
+          original files</strong>.</li>
+        <li>In <strong>Direct</strong> mode nothing but Reddit is contacted. Bulk ZIP needs to read
+          raw bytes, which browsers block cross-origin — so ZIP needs an extension, your own Worker,
+          or a public proxy.</li>
+        <li>Reddit also blocks datacenter IPs (where public proxies and Workers run), so those are
+          best-effort. The most reliable path is the optional <strong>Pulldit browser extension</strong>,
+          which fetches everything from <strong>your own IP</strong> — no CORS limits, no proxy.</li>
+        <li>Extra tools: a <strong>link history</strong> (re-fetch past links), <strong>advanced
+          settings</strong> (download rate-limit, timeout, size caps), and <strong>skip
+          already-downloaded</strong> so big subreddits only grab what's new. Everything is
+          remembered locally and can be wiped under “Clear stored data”.</li>
       </ul>
-      <h3>Deploy your own ZIP proxy (optional, ~5 min)</h3>
+      <h3>Most reliable: the Pulldit extension</h3>
+      <p>
+        Open “Proxy &amp; download mode”. If the extension isn't installed you'll see a
+        <strong>“Click here to install”</strong> link; once installed, an <strong>Extension</strong>
+        mode appears and unlocks proxy-free bulk ZIP from your own IP. Source &amp; install steps:
+        <code>extension/README.md</code>.
+      </p>
+      <h3>Or deploy your own ZIP proxy (optional, ~5 min)</h3>
       <p>
         Create a free Cloudflare Worker, paste the code from
         <code>worker/cloudflare-worker.js</code> in this repo, deploy, and paste the resulting

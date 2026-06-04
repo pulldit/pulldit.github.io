@@ -30,12 +30,20 @@ that fetches everything from your own IP (the most reliable, proxy-free path).
 
 ## Features
 
-- 🔗 Paste a **post URL**, a `redd.it` short link, `r/subreddit`, `u/username`, or just a
-  subreddit name.
+- 🔗 Paste a **post URL**, a `redd.it` short link, a `reddit.com/media?url=…` file link,
+  `r/subreddit`, `u/username`, or just a subreddit name.
 - 🖼 Previews images, GIFs, native **galleries**, Reddit-hosted **videos**, and **crossposts**.
+  Previews are lightweight **thumbnails** (a grid of hundreds stays smooth); **downloads & ZIPs
+  are always the full-quality originals**.
 - 🔀 Sort subreddits (hot / new / top / rising / …) with a time window.
 - ✅ Select what you want, download **individually** or as a single **ZIP**.
-- 🔒 Switchable proxy mode (see below). Your choice is remembered locally.
+- 🧩 Optional **browser extension** for proxy-free ZIP from your own IP (most reliable). Switchable
+  proxy mode otherwise (see below). Your choice is remembered locally.
+- 🕘 **Link history** — re-fetch past links in one click (newest = latest fetch).
+- ⏭ **Skip already-downloaded** — remembers grabbed posts/images so big subreddits only fetch
+  what's new (with a “count discarded as downloaded” toggle); a **Skipped** stat shows the rest.
+- 🛠 **Advanced settings** — download rate-limit (delay), request timeout, max file size, max files
+  per ZIP. All saved locally.
 - 🛡 Hardened: strict Content-Security-Policy, locally-bundled libraries (no CDN), strict
   host allowlisting, no `innerHTML` with data, server-free.
 - 🧪 An extensive vitest suite covering the security-critical logic.
@@ -115,14 +123,18 @@ assets/logo.svg         # logo / favicon
 src/
   config.js             # allowlists, limits, proxy presets
   url-guard.js          # URL/host validation, IP checks, filename sanitizing
-  reddit.js             # input parsing + listing normalization
-  proxy.js              # proxy modes + hardened fetch (timeout, size cap)
+  reddit.js             # input parsing + listing normalization + thumbnails
+  proxy.js              # proxy modes (direct/worker/public/extension) + hardened fetch
   bridge-client.js      # page-side client for the optional browser extension
-  download.js           # single + ZIP downloads
-  app.js                # UI controller
+  filters.js            # type/source filtering
+  stats.js              # fetch/download statistics (cumulative)
+  history.js            # activity log helpers
+  download.js           # single + ZIP downloads (rate-limit, size/timeout caps)
+  app.js                # UI controller (panels, link history, advanced settings, skip registry)
 vendor/                 # JSZip + FileSaver (pinned, local)
 worker/                 # optional self-hosted secure proxy (Cloudflare)
 extension/              # optional MV3 browser extension (proxy-free ZIP via your own IP)
+scripts/                # syntax-check, extension pack/bump, publish
 test/                   # vitest suites
 .github/workflows/      # CI, Pages deploy, CodeQL, security scans
 ```
@@ -134,6 +146,7 @@ npm test          # run the vitest suites
 npm run check     # syntax-check every shipped JS file
 npm run build     # check + test (the CI gate)
 npm run pack:ext  # package extension/ into pulldit-bridge.zip
+npm run bump:ext  # bump the extension's patch version (manifest = single source of truth)
 ```
 
 ## Disclaimer & responsible use
