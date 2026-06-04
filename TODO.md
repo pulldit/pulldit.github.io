@@ -57,7 +57,13 @@ public release.
 - [x] 8.4 `npm run build` green + manual smoke (serve + staged-site load)
 
 ## Phase 9 — Public release / GitHub setup
-- [ ] 9.1 Final commit, tag `v1.0.0`
-- [ ] 9.2 Create public GitHub repo via `gh` (if authed), push `main` + tags
-- [ ] 9.3 Enable GitHub Pages (Actions source), create GitHub Release
-- [ ] 9.4 Hand over: live URL + any manual steps needed
+- [x] 9.1 Final commit, tag `v1.0.0`
+- [x] 9.2 Create public GitHub repo `pulldit/pulldit.github.io`, push `main` + tags
+- [x] 9.3 Enable GitHub Pages (Actions source), create GitHub Release v1.0.0
+- [x] 9.4 Hand over: LIVE at https://pulldit.github.io/ — deploy succeeded, all assets 200
+
+## Result
+- Live: https://pulldit.github.io/
+- Repo: https://github.com/pulldit/pulldit.github.io
+- Release: https://github.com/pulldit/pulldit.github.io/releases/tag/v1.0.0
+- Deploy workflow: success · CI/CodeQL/Security/Dependabot active
