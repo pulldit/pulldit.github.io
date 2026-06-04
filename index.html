@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=29" />
+  <link rel="stylesheet" href="styles.css?v=30" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -303,6 +303,9 @@
           user you enter, then shows the media it finds. Previews are small thumbnails so a grid
           of hundreds of images stays fast — <strong>downloads &amp; ZIPs are always the full-quality
           original files</strong>.</li>
+        <li>Reddit returns at most 100 items per listing request, so a <strong>Limit above 100</strong>
+          triggers <strong>auto-pagination</strong>: it follows Reddit's page cursor and fetches
+          several pages (up to your “Max items”, with a delay between requests) and merges them.</li>
         <li>In <strong>Direct</strong> mode nothing but Reddit is contacted. Bulk ZIP needs to read
           raw bytes, which browsers block cross-origin — so ZIP needs an extension, your own Worker,
           or a public proxy.</li>
@@ -446,6 +449,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=29"></script>
+  <script type="module" src="src/app.js?v=30"></script>
 </body>
 </html>

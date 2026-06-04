@@ -36,6 +36,9 @@ that fetches everything from your own IP (the most reliable, proxy-free path).
   Previews are lightweight **thumbnails** (a grid of hundreds stays smooth); **downloads & ZIPs
   are always the full-quality originals**.
 - 🔀 Sort subreddits (hot / new / top / rising / …) with a time window.
+- 📄 **Auto-pagination** — Reddit caps a listing request at 100 items, so a **Limit above 100**
+  transparently fetches multiple pages (following the `after` cursor) up to a configurable **Max
+  items**, with a delay between requests; the Limit field shows a hint when it kicks in.
 - ✅ Select what you want, download **individually** or as a single **ZIP**.
 - 🧩 Optional **browser extension** for proxy-free ZIP from your own IP (most reliable). Switchable
   proxy mode otherwise (see below). Your choice is remembered locally.
@@ -51,11 +54,12 @@ that fetches everything from your own IP (the most reliable, proxy-free path).
   pages, executables, archives, scripts); optional **Check 2** decode-probes the few files with no
   known signature. Both toggleable in Advanced settings.
 - 🛠 **Advanced settings** — download rate-limit (delay), request timeout, max file size, max files
-  per ZIP, history limit/overwrite, link auto-save, the two validation checks, and the **Clear
-  stored data** tool. Everything is saved locally and re-loaded automatically.
+  per ZIP, history limit/overwrite, link auto-save, the two validation checks, **auto-pagination**
+  (toggle + max items + page-request delay), and the **Clear stored data** tool. Everything is
+  saved locally and re-loaded automatically.
 - 🛡 Hardened: strict Content-Security-Policy, locally-bundled libraries (no CDN), strict
   host allowlisting, no `innerHTML` with data, server-free.
-- 🧪 An extensive vitest suite (159 tests) covering the security-critical logic.
+- 🧪 An extensive vitest suite (163 tests) covering the security-critical logic.
 
 ## Proxy modes (and why ZIP needs one)
 
