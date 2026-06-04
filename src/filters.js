@@ -19,7 +19,8 @@ export const FILTER_KEYS = Object.freeze(['image', 'gif', 'video', 'reddit', 'im
 export function mediaSource(item) {
   const h = (item && item.host ? item.host : '').toLowerCase();
   if (h === 'imgur.com' || h.endsWith('.imgur.com')) return 'imgur';
-  if (h.endsWith('redd.it') || h.endsWith('redditmedia.com')) return 'reddit';
+  if (h === 'redd.it' || h.endsWith('.redd.it')) return 'reddit';
+  if (h === 'redditmedia.com' || h.endsWith('.redditmedia.com')) return 'reddit';
   return 'other';
 }
 
