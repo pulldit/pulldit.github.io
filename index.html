@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>RedditDownloader — download Reddit images, GIFs &amp; videos in your browser</title>
+  <meta name="description" content="Free, open-source, privacy-friendly Reddit media downloader. Everything runs in your browser — no account, no tracking, no server storing your data." />
+  <meta name="color-scheme" content="dark light" />
+  <meta name="theme-color" content="#ff5414" />
+
+  <!--
+    Strict Content-Security-Policy. No inline scripts/styles, no eval, objects disabled.
+    connect-src lists exactly the origins the app may talk to: Reddit (listing JSON),
+    Reddit media CDNs, and the curated public proxies. If you deploy your OWN Cloudflare
+    Worker proxy, add its https origin to connect-src below (one line) — that is the only
+    edit needed for a custom worker.
+  -->
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'none';
+    base-uri 'none';
+    form-action 'none';
+    frame-ancestors 'none';
+    script-src 'self';
+    style-src 'self';
+    font-src 'self';
+    manifest-src 'self';
+    img-src 'self' data: https://i.redd.it https://preview.redd.it https://external-preview.redd.it https://a.thumbs.redditmedia.com https://b.thumbs.redditmedia.com https://i.imgur.com;
+    connect-src 'self' https://www.reddit.com https://old.reddit.com https://i.redd.it https://v.redd.it https://preview.redd.it https://external-preview.redd.it https://i.imgur.com https://corsproxy.io https://api.allorigins.win https://thingproxy.freeboard.io;
+  " />
+
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="assets/logo.svg" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <a class="skip-link" href="#app">Skip to app</a>
+
+  <header class="site-header">
+    <div class="brand">
+      <img class="brand-logo" src="assets/logo.svg" width="44" height="44" alt="" />
+      <div class="brand-text">
+        <h1>Reddit<span>Downloader</span></h1>
+        <p class="tagline">Download images, GIFs &amp; videos — entirely in your browser.</p>
+      </div>
+    </div>
+    <nav class="header-links">
+      <a href="https://github.com/RedditDownloader/redditdownloader.github.io" rel="noopener noreferrer">GitHub</a>
+      <a href="#about">About</a>
+    </nav>
+  </header>
+
+  <main id="app">
+    <form id="search-form" class="panel" autocomplete="off">
+      <label class="field">
+        <span class="field-label">Reddit link, subreddit or user</span>
+        <input
+          id="query"
+          name="query"
+          type="text"
+          inputmode="url"
+          placeholder="e.g. r/EarthPorn, u/spez, or a full post URL"
+          required
+          aria-describedby="query-hint" />
+      </label>
+      <p id="query-hint" class="hint">
+        Accepts a post URL, a <code>redd.it</code> link, <code>r/subreddit</code>,
+        <code>u/username</code>, or just a subreddit name.
+      </p>
+
+      <div class="row">
+        <label class="field compact">
+          <span class="field-label">Sort</span>
+          <select id="sort" name="sort">
+            <option value="hot">Hot</option>
+            <option value="new">New</option>
+            <option value="top">Top</option>
+            <option value="rising">Rising</option>
+            <option value="controversial">Controversial</option>
+            <option value="best">Best</option>
+          </select>
+        </label>
+        <label class="field compact">
+          <span class="field-label">Top of</span>
+          <select id="time" name="time">
+            <option value="">—</option>
+            <option value="hour">Hour</option>
+            <option value="day">Day</option>
+            <option value="week">Week</option>
+            <option value="month">Month</option>
+            <option value="year">Year</option>
+            <option value="all">All time</option>
+          </select>
+        </label>
+        <label class="field compact">
+          <span class="field-label">Limit</span>
+          <input id="limit" name="limit" type="number" min="1" max="100" value="50" />
+        </label>
+        <button id="fetch-btn" type="submit" class="btn primary">Fetch media</button>
+      </div>
+    </form>
+
+    <details id="proxy-panel" class="panel">
+      <summary>
+        <span class="summary-title">Proxy &amp; download mode</span>
+        <span id="proxy-badge" class="badge">Direct</span>
+      </summary>
+
+      <fieldset class="proxy-modes">
+        <legend class="visually-hidden">Proxy mode</legend>
+
+        <label class="radio">
+          <input type="radio" name="proxy-mode" value="direct" checked />
+          <span>
+            <strong>Direct — no proxy</strong> <em class="tag safe">most private</em>
+            <small>Talks only to Reddit. Preview &amp; one-by-one downloads. Bulk ZIP is
+              not possible (browsers can't read cross-origin media bytes).</small>
+          </span>
+        </label>
+
+        <label class="radio">
+          <input type="radio" name="proxy-mode" value="worker" />
+          <span>
+            <strong>Your own Cloudflare Worker</strong> <em class="tag safe">ZIP · your infra</em>
+            <small>A tiny free proxy locked to <code>*.redd.it</code> that you control.
+              Enables bulk ZIP without trusting a third party. See
+              <a href="#about">setup</a>.</small>
+            <input id="worker-url" type="url" class="inline-input" placeholder="https://your-worker.workers.dev/" />
+          </span>
+        </label>
+
+        <label class="radio">
+          <input type="radio" name="proxy-mode" value="public" />
+          <span>
+            <strong>Public CORS proxy</strong> <em class="tag warn">ZIP · third party</em>
+            <small>Convenient bulk ZIP with zero setup, but a third party relays the
+              traffic. Pick one:</small>
+            <select id="public-proxy" class="inline-input">
+              <option value="corsproxy">corsproxy.io</option>
+              <option value="allorigins">allorigins.win</option>
+              <option value="thingproxy">thingproxy.freeboard.io</option>
+            </select>
+          </span>
+        </label>
+      </fieldset>
+    </details>
+
+    <section id="results-section" class="panel" hidden aria-live="polite">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <button id="select-all" type="button" class="btn ghost">Select all</button>
+          <button id="select-none" type="button" class="btn ghost">Clear</button>
+          <span id="count" class="count">0 items</span>
+        </div>
+        <div class="toolbar-right">
+          <button id="download-selected" type="button" class="btn">Download selected</button>
+          <button id="download-zip" type="button" class="btn primary" disabled>Download ZIP</button>
+        </div>
+      </div>
+      <div id="progress" class="progress" hidden>
+        <div id="progress-bar" class="progress-bar"></div>
+        <span id="progress-label" class="progress-label"></span>
+      </div>
+      <ul id="grid" class="grid"></ul>
+    </section>
+
+    <p id="status" class="status" role="status" aria-live="polite"></p>
+
+    <section id="about" class="panel about">
+      <h2>About</h2>
+      <p>
+        <strong>RedditDownloader</strong> is a free, open-source tool that downloads images,
+        GIFs and videos from Reddit <em>directly in your browser</em>. There is no account,
+        no tracking, and no backend storing your data. The page is fully static and hosted on
+        GitHub Pages.
+      </p>
+      <h3>How it works</h3>
+      <ul>
+        <li>It reads Reddit's public <code>.json</code> listing for the post, subreddit or
+          user you enter, then shows the media it finds.</li>
+        <li>In <strong>Direct</strong> mode nothing but Reddit is contacted. Bulk ZIP needs to
+          read raw bytes, which browsers block cross-origin — so ZIP requires a proxy.</li>
+        <li>For ZIP you can run <strong>your own Cloudflare Worker</strong> (locked to
+          <code>*.redd.it</code>) or pick a public proxy. Your choice is remembered locally.</li>
+      </ul>
+      <h3>Deploy your own ZIP proxy (optional, ~5 min)</h3>
+      <p>
+        Create a free Cloudflare Worker, paste the code from
+        <code>worker/cloudflare-worker.js</code> in this repo, deploy, and paste the resulting
+        <code>*.workers.dev</code> URL into the Worker option above. Full steps are in
+        <code>worker/README.md</code>.
+      </p>
+      <h3>About the project</h3>
+      <p>
+        Maintained as an open-source project on
+        <a href="https://github.com/RedditDownloader/redditdownloader.github.io" rel="noopener noreferrer">GitHub</a>.
+        Contributions and issues are welcome. RedditDownloader is an independent project and is
+        <strong>not affiliated with, endorsed by, or sponsored by Reddit, Inc.</strong>
+      </p>
+    </section>
+
+    <section class="panel disclaimer">
+      <h2>Disclaimer &amp; responsible use</h2>
+      <ul>
+        <li>Provided <strong>“as is”, without any warranty</strong>. See the
+          <a href="https://github.com/RedditDownloader/redditdownloader.github.io/blob/main/LICENSE" rel="noopener noreferrer">MIT License</a>.</li>
+        <li>You are solely responsible for what you download and how you use it. Respect
+          <strong>copyright</strong>, the original creators, and
+          <a href="https://www.redditinc.com/policies/user-agreement" rel="noopener noreferrer">Reddit's User Agreement</a>.</li>
+        <li>Download only content you have the right to, and never for harassment, redistribution
+          without permission, or any unlawful purpose.</li>
+        <li>Not affiliated with Reddit, Inc. “Reddit” is a trademark of Reddit, Inc.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <p>
+      Open-source ·
+      <a href="https://github.com/RedditDownloader/redditdownloader.github.io" rel="noopener noreferrer">Source</a> ·
+      <a href="https://github.com/RedditDownloader/redditdownloader.github.io/blob/main/LICENSE" rel="noopener noreferrer">MIT License</a> ·
+      Runs entirely in your browser.
+    </p>
+  </footer>
+
+  <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
+  <script src="vendor/jszip.min.js"></script>
+  <script src="vendor/FileSaver.min.js"></script>
+  <script type="module" src="src/app.js"></script>
+</body>
+</html>

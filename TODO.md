@@ -33,11 +33,11 @@ public release.
 - [x] 4.2 `src/download.js` — downloadZip (JSZip, progress, per-file error tolerance)
 
 ## Phase 5 — UI + branding
-- [ ] 5.1 `assets/logo.svg` + `assets/favicon.svg` — custom Reddit-downloader logo
-- [ ] 5.2 `index.html` — strict CSP meta, semantic structure, About section, vendor + app scripts
-- [ ] 5.3 `styles.css` — responsive dark UI, grid, progress, logo
-- [ ] 5.4 `src/app.js` — input, proxy settings panel, fetch, render grid, select, download/zip
-- [ ] 5.5 Persist settings (localStorage), accessibility, keyboard, About content
+- [x] 5.1 `assets/logo.svg` — custom download-arrow badge logo (also favicon)
+- [x] 5.2 `index.html` — strict CSP meta, semantic structure, About section, vendor + app scripts
+- [x] 5.3 `styles.css` — responsive dark UI, grid, progress, logo
+- [x] 5.4 `src/app.js` — input, proxy settings panel, fetch, render grid, select, download/zip
+- [x] 5.5 Persist settings (localStorage), accessibility, keyboard, About content
 
 ## Phase 6 — Cloudflare Worker (own secure proxy)
 - [ ] 6.1 `worker/cloudflare-worker.js` — host allowlist, method/size/timeout guards, CORS, no SSRF

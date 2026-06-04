@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="RedditDownloader logo">
+  <defs>
+    <linearGradient id="rd-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff5414"/>
+      <stop offset="1" stop-color="#ff8717"/>
+    </linearGradient>
+  </defs>
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="url(#rd-grad)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M32 13 V39"/>
+    <path d="M20 30 L32 42 L44 30"/>
+    <path d="M16 49 H48"/>
+  </g>
+</svg>
