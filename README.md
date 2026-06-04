@@ -20,7 +20,7 @@ No account. No tracking. No backend storing your data. Just a static page.
 
 ## What it is
 
-A complete, security-focused rewrite of the original Pulldit. It is a **100% static
+A complete, security-focused rewrite of the original RedditDownloader. It is a **100% static
 site** (HTML + CSS + vanilla ES modules) that you can host on GitHub Pages or open from any
 static web server. All work — fetching listings, previewing media, packaging ZIPs — happens
 in the visitor's browser.
@@ -39,7 +39,7 @@ choose your own privacy/convenience trade-off.
 - 🔒 Switchable proxy mode (see below). Your choice is remembered locally.
 - 🛡 Hardened: strict Content-Security-Policy, locally-bundled libraries (no CDN), strict
   host allowlisting, no `innerHTML` with data, server-free.
-- 🧪 65 unit tests covering the security-critical logic.
+- 🧪 An extensive vitest suite covering the security-critical logic.
 
 ## Proxy modes (and why ZIP needs one)
 
