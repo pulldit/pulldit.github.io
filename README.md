@@ -39,14 +39,23 @@ that fetches everything from your own IP (the most reliable, proxy-free path).
 - ✅ Select what you want, download **individually** or as a single **ZIP**.
 - 🧩 Optional **browser extension** for proxy-free ZIP from your own IP (most reliable). Switchable
   proxy mode otherwise (see below). Your choice is remembered locally.
-- 🕘 **Link history** — re-fetch past links in one click (newest = latest fetch).
+- 🔗 **Link history** — re-fetch past links in one click (newest = latest fetch), remove
+  individual links, and an **auto-save** toggle (off = curate manually via “+ Add current link”).
+- 🕘 **Activity history** — a detailed log (fetch shows sort · time · proxy mode; downloads show
+  filename · size; ZIPs show skipped · elapsed) with a configurable **display limit**, an
+  **auto-overwrite vs. keep-everything** mode, a **“Show more”** expander, and per-entry delete.
 - ⏭ **Skip already-downloaded** — remembers grabbed posts/images so big subreddits only fetch
   what's new (with a “count discarded as downloaded” toggle); a **Skipped** stat shows the rest.
+- 🔬 **Media validation** — before saving/zipping, **Check 1** verifies each download's magic
+  bytes are genuine image/video and rejects mislabeled payloads (HTML error/“removed”/rate-limit
+  pages, executables, archives, scripts); optional **Check 2** decode-probes the few files with no
+  known signature. Both toggleable in Advanced settings.
 - 🛠 **Advanced settings** — download rate-limit (delay), request timeout, max file size, max files
-  per ZIP. All saved locally.
+  per ZIP, history limit/overwrite, link auto-save, the two validation checks, and the **Clear
+  stored data** tool. Everything is saved locally and re-loaded automatically.
 - 🛡 Hardened: strict Content-Security-Policy, locally-bundled libraries (no CDN), strict
   host allowlisting, no `innerHTML` with data, server-free.
-- 🧪 An extensive vitest suite covering the security-critical logic.
+- 🧪 An extensive vitest suite (159 tests) covering the security-critical logic.
 
 ## Proxy modes (and why ZIP needs one)
 
@@ -107,6 +116,11 @@ A `.nojekyll` file is included so Pages serves the files as-is.
   of SSRF protection. The **Cloudflare Worker** enforces the same allowlist server-side and is
   **not an open proxy**.
 - **Resource guards:** per-request timeouts and a streamed hard size cap on every download.
+- **Content validation** (`src/media-validate.js`): fetched bytes are sniffed by magic number
+  before being saved or zipped — known image/video formats pass, non-media/dangerous payloads
+  (executables, archives, scripts, HTML/JSON error pages) are rejected, and an optional decode
+  probe (`createImageBitmap`, freed immediately) settles the unknown remainder. This is content
+  sniffing, **not** an antivirus — media is decoded data, not executed code.
 - **Safe DOM:** all rendering uses `createElement` + `textContent`; user/Reddit data is never
   injected as HTML.
 - **Least-privilege extension:** the optional [browser extension](extension/README.md) requests
@@ -128,9 +142,10 @@ src/
   bridge-client.js      # page-side client for the optional browser extension
   filters.js            # type/source filtering
   stats.js              # fetch/download statistics (cumulative)
-  history.js            # activity log helpers
-  download.js           # single + ZIP downloads (rate-limit, size/timeout caps)
-  app.js                # UI controller (panels, link history, advanced settings, skip registry)
+  history.js            # activity log helpers (entry rendering + caps)
+  media-validate.js     # magic-byte sniffing (Check 1) + decode probe (Check 2)
+  download.js           # single + ZIP downloads (rate-limit, size/timeout caps, validation)
+  app.js                # UI controller (panels, link/activity history, advanced settings, skip registry)
 vendor/                 # JSZip + FileSaver (pinned, local)
 worker/                 # optional self-hosted secure proxy (Cloudflare)
 extension/              # optional MV3 browser extension (proxy-free ZIP via your own IP)

@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=23" />
+  <link rel="stylesheet" href="styles.css?v=24" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -297,10 +297,18 @@
         <li>Reddit also blocks datacenter IPs (where public proxies and Workers run), so those are
           best-effort. The most reliable path is the optional <strong>Pulldit browser extension</strong>,
           which fetches everything from <strong>your own IP</strong> — no CORS limits, no proxy.</li>
-        <li>Extra tools: a <strong>link history</strong> (re-fetch past links), <strong>advanced
-          settings</strong> (download rate-limit, timeout, size caps), and <strong>skip
-          already-downloaded</strong> so big subreddits only grab what's new. Everything is
-          remembered locally and can be wiped under “Clear stored data”.</li>
+        <li>Before any file is saved or zipped it is <strong>content-validated</strong>: Check 1
+          confirms the magic bytes are a genuine image/video and rejects mislabeled payloads
+          (HTML error/“removed” pages, executables, archives, scripts); an optional Check 2
+          decode-probes the few files with no known signature. This is content sniffing, not an
+          antivirus — media is decoded data, not executed code.</li>
+        <li>Extra tools: a <strong>link history</strong> (re-fetch past links, per-link delete,
+          optional auto-save), a detailed <strong>activity history</strong> (display limit,
+          auto-overwrite or keep-everything, “Show more”, per-entry delete), <strong>advanced
+          settings</strong> (rate-limit, timeout, size caps, validation toggles), and
+          <strong>skip already-downloaded</strong> so big subreddits only grab what's new.
+          Everything is remembered locally and can be wiped under “Clear stored data” (in
+          Advanced settings).</li>
       </ul>
       <h3>Most reliable: the Pulldit extension</h3>
       <p>
@@ -432,6 +440,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=23"></script>
+  <script type="module" src="src/app.js?v=24"></script>
 </body>
 </html>
