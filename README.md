@@ -81,9 +81,9 @@ This repo ships a workflow that does it automatically:
 
 1. Push to `main`.
 2. In **Settings → Pages**, set **Source = GitHub Actions**.
-3. The [`deploy`](.github/workflows/deploy.yml) workflow stages the static files and publishes
-   them. (It uploads only `index.html`, `styles.css`, `assets/`, `src/`, `vendor/` — never
-   `node_modules`.)
+3. The [`deploy`](.github/workflows/deploy.yml) workflow stages the static files, packages the
+   browser extension, and publishes everything. (It uploads only `index.html`, `styles.css`,
+   `assets/`, `src/`, `vendor/`, and the generated `pulldit-bridge.zip` — never `node_modules`.)
 
 A `.nojekyll` file is included so Pages serves the files as-is.
 
@@ -101,6 +101,10 @@ A `.nojekyll` file is included so Pages serves the files as-is.
 - **Resource guards:** per-request timeouts and a streamed hard size cap on every download.
 - **Safe DOM:** all rendering uses `createElement` + `textContent`; user/Reddit data is never
   injected as HTML.
+- **Least-privilege extension:** the optional [browser extension](extension/README.md) requests
+  only `host_permissions` for Reddit/imgur (no tabs, storage, or `<all_urls>`), enforces the same
+  host allowlist in its background worker, and only serves requests from the Pulldit page — it is
+  **not an open proxy**.
 
 ## Project structure
 
@@ -129,6 +133,7 @@ test/                   # vitest suites
 npm test          # run the vitest suites
 npm run check     # syntax-check every shipped JS file
 npm run build     # check + test (the CI gate)
+npm run pack:ext  # package extension/ into pulldit-bridge.zip
 ```
 
 ## Disclaimer & responsible use
