@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=19" />
+  <link rel="stylesheet" href="styles.css?v=20" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -210,12 +210,17 @@
           <span class="field-label">Max files per ZIP</span>
           <input id="adv-maxzip" type="number" min="1" max="1000" value="250" />
         </label>
+        <label class="field compact">
+          <span class="field-label">Max history shown</span>
+          <input id="adv-history-limit" type="number" min="10" max="1000" step="10" value="100" />
+        </label>
       </div>
       <p class="hint">A download delay (rate limit) helps avoid Reddit/CDN throttling on big batches.</p>
       <ul class="adv-toggles">
         <li><label class="check-row"><input type="checkbox" id="adv-skip" checked /><span><strong>Skip already-downloaded</strong><small>Don’t re-download posts/images you already grabbed (bulk ZIP &amp; “Download selected”).</small></span></label></li>
         <li><label class="check-row"><input type="checkbox" id="adv-count-discarded" /><span><strong>Count discarded as downloaded</strong><small>Items you discard also count as “seen” and get skipped next time.</small></span></label></li>
         <li><label class="check-row"><input type="checkbox" id="adv-autosave-links" checked /><span><strong>Auto-save fetched links</strong><small>Remember every link you fetch in the Link history. When on, the “+ Add current link” button is disabled (it would be redundant).</small></span></label></li>
+        <li><label class="check-row"><input type="checkbox" id="adv-history-overwrite" checked /><span><strong>Auto-overwrite oldest history</strong><small>On: keep only the newest “Max history shown” entries (oldest are overwritten). Off: keep everything — use “Show more” to reveal older entries.</small></span></label></li>
       </ul>
       <p class="hint">Everything here is saved locally and loaded automatically on your next visit.</p>
       <div class="adv-tools">
@@ -425,6 +430,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=19"></script>
+  <script type="module" src="src/app.js?v=20"></script>
 </body>
 </html>

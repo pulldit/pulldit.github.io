@@ -11,7 +11,7 @@ import {
   formatBytes, formatDuration, formatSpeed, formatPercent, classifyError, aggregateDownload,
   accumulateFetchStats,
 } from './stats.js';
-import { capList, describeEntry, HISTORY_KEY } from './history.js';
+import { capList, describeEntry, HISTORY_KEY, MAX_HISTORY, MAX_HISTORY_HARD } from './history.js';
 
 const $ = (id) => document.getElementById(id);
 const SETTINGS_KEY = 'rd.settings.v1';
@@ -176,6 +176,7 @@ const ADV_DEFAULTS = Object.freeze({
   delayMs: 0, timeoutSec: 25, maxFileMb: 200, maxZipFiles: 250,
   skipDownloaded: true, countDiscardedAsDownloaded: false,
   autoSaveLinks: true,
+  historyLimit: MAX_HISTORY, historyAutoOverwrite: true,
 });
 
 function clampInt(v, min, max, dflt) {
@@ -200,6 +201,8 @@ function loadAdvanced() {
     countDiscardedAsDownloaded:
       typeof raw.countDiscardedAsDownloaded === 'boolean' ? raw.countDiscardedAsDownloaded : ADV_DEFAULTS.countDiscardedAsDownloaded,
     autoSaveLinks: typeof raw.autoSaveLinks === 'boolean' ? raw.autoSaveLinks : ADV_DEFAULTS.autoSaveLinks,
+    historyLimit: clampInt(raw.historyLimit, 10, 1000, ADV_DEFAULTS.historyLimit),
+    historyAutoOverwrite: typeof raw.historyAutoOverwrite === 'boolean' ? raw.historyAutoOverwrite : ADV_DEFAULTS.historyAutoOverwrite,
   };
 }
 
@@ -221,6 +224,8 @@ function applyAdvancedToUi() {
   $('adv-skip').checked = advanced.skipDownloaded;
   $('adv-count-discarded').checked = advanced.countDiscardedAsDownloaded;
   $('adv-autosave-links').checked = advanced.autoSaveLinks;
+  $('adv-history-limit').value = String(advanced.historyLimit);
+  $('adv-history-overwrite').checked = advanced.historyAutoOverwrite;
   syncLinkAddButton();
 }
 
@@ -243,9 +248,12 @@ function readAdvancedFromUi() {
     skipDownloaded: $('adv-skip').checked,
     countDiscardedAsDownloaded: $('adv-count-discarded').checked,
     autoSaveLinks: $('adv-autosave-links').checked,
+    historyLimit: clampInt($('adv-history-limit').value, 10, 1000, ADV_DEFAULTS.historyLimit),
+    historyAutoOverwrite: $('adv-history-overwrite').checked,
   };
   saveAdvanced();
   applyAdvancedToUi(); // reflect any clamped values back (also re-syncs dependent UI)
+  reconcileHistory(); // apply new cap / display window immediately
 }
 
 /** Per-download limits derived from the advanced settings (passed into download.js). */
@@ -356,10 +364,30 @@ function saveActivity() {
 }
 
 let activity = loadActivity();
+/** How many (newest) history entries are currently shown; grown by "Show more". */
+let historyShown = advanced.historyLimit;
+
+/** Storage cap: trim to the display limit when auto-overwrite is on, else keep up to the hard ceiling. */
+function historyCap() {
+  return advanced.historyAutoOverwrite ? advanced.historyLimit : MAX_HISTORY_HARD;
+}
 
 function addHistory(entry) {
-  activity = capList([...activity, { ...entry, t: Date.now() }]);
+  activity = capList([...activity, { ...entry, t: Date.now() }], historyCap());
   saveActivity();
+  renderHistory();
+}
+
+/** Re-apply the storage cap and reset the display window after a settings change. */
+function reconcileHistory() {
+  if (advanced.historyAutoOverwrite) {
+    const capped = capList(activity, advanced.historyLimit);
+    if (capped.length !== activity.length) {
+      activity = capped;
+      saveActivity();
+    }
+  }
+  historyShown = advanced.historyLimit;
   renderHistory();
 }
 
@@ -374,33 +402,63 @@ function formatTime(t) {
 function renderHistory() {
   const list = $('history-list');
   list.replaceChildren();
-  $('history-count').textContent = String(activity.length);
-  if (activity.length === 0) {
+  const total = activity.length;
+  $('history-count').textContent = String(total);
+  if (total === 0) {
     const empty = document.createElement('li');
     empty.className = 'history-empty';
     empty.textContent = 'No activity yet.';
     list.appendChild(empty);
     return;
   }
-  for (let i = activity.length - 1; i >= 0; i -= 1) {
-    const e = activity[i];
-    const d = describeEntry(e);
+  const window = Math.max(1, Number(historyShown) || advanced.historyLimit);
+  const shown = Math.min(window, total);
+  for (let i = total - 1; i >= total - shown; i -= 1) {
+    list.appendChild(renderHistoryItem(activity[i]));
+  }
+  if (total > shown) {
     const li = document.createElement('li');
-    li.className = 'history-item' + (d.kind === 'good' || d.kind === 'bad' || d.kind === 'warn' ? ' ' + d.kind : '');
-    const time = document.createElement('span');
-    time.className = 'history-time';
-    time.textContent = formatTime(e.t);
-    const icon = document.createElement('span');
-    icon.className = 'history-icon';
-    icon.textContent = d.icon;
-    const text = document.createElement('span');
-    text.className = 'history-text';
-    text.textContent = d.text;
-    li.appendChild(time);
-    li.appendChild(icon);
-    li.appendChild(text);
+    li.className = 'history-more';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn ghost history-more-btn';
+    btn.textContent = `Show more (${total - shown} older)`;
+    btn.addEventListener('click', () => {
+      historyShown = shown + advanced.historyLimit;
+      renderHistory();
+    });
+    li.appendChild(btn);
     list.appendChild(li);
   }
+}
+
+/** Build one history <li> with time, icon, primary text and an optional secondary detail line. */
+function renderHistoryItem(e) {
+  const d = describeEntry(e);
+  const li = document.createElement('li');
+  li.className = 'history-item' + (d.kind === 'good' || d.kind === 'bad' || d.kind === 'warn' ? ' ' + d.kind : '');
+  const time = document.createElement('span');
+  time.className = 'history-time';
+  time.textContent = formatTime(e.t);
+  const icon = document.createElement('span');
+  icon.className = 'history-icon';
+  icon.textContent = d.icon;
+  const main = document.createElement('div');
+  main.className = 'history-main';
+  const text = document.createElement('span');
+  text.className = 'history-text';
+  text.textContent = d.text;
+  main.appendChild(text);
+  if (d.detail) {
+    const detail = document.createElement('span');
+    detail.className = 'history-detail';
+    detail.textContent = d.detail;
+    main.appendChild(detail);
+  }
+  li.appendChild(time);
+  li.appendChild(icon);
+  li.appendChild(main);
+  return li;
 }
 
 function itemTitle(id) {
@@ -607,7 +665,7 @@ async function onSearch(event) {
     discarded.clear();
     showDiscarded = false;
     refreshView();
-    addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: 1 });
+    addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: 1, mode: settings.mode });
     if (advanced.autoSaveLinks) addLink(rawInput, parsed.label);
     setStatus(reportFound(1), keptItems().length ? 'ok' : 'error');
     return;
@@ -634,7 +692,7 @@ async function onSearch(event) {
     showDiscarded = false;
     recordFetchStats({ status: 'success', elapsedMs, bytes: meta.bytes, ...stats });
     refreshView();
-    addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: items.length });
+    addHistory({ type: 'fetch', label: parsed.label, status: 'success', found: items.length, sort: opts.sort, time: opts.time, mode: settings.mode });
     if (advanced.autoSaveLinks) addLink(rawInput, parsed.label);
     setStatus(reportFound(items.length), items.length === 0 ? '' : (keptItems().length ? 'ok' : 'error'));
   } catch (err) {
@@ -646,7 +704,7 @@ async function onSearch(event) {
       bytes: meta.bytes,
       error: err?.message ? String(err.message) : String(err),
     });
-    addHistory({ type: 'fetch', label: parsed.label, status: reason });
+    addHistory({ type: 'fetch', label: parsed.label, status: reason, sort: opts.sort, time: opts.time, mode: settings.mode });
     handleFetchError(err);
   } finally {
     setBusy(false);
@@ -1061,7 +1119,11 @@ async function onDownloadOne(item, btn) {
       markDownloaded(item); // a real save — remember it (direct-mode "opened" is unverified)
       if (typeof btn.closest === 'function') markCardDownloaded(btn.closest('.card'));
     }
-    addHistory({ type: 'download', label: item.title || item.id });
+    addHistory({
+      type: 'download', label: item.title || item.id,
+      filename: r.filename || '',
+      size: Number.isFinite(r.bytes) ? formatBytes(r.bytes) : (r.opened ? 'opened in new tab' : ''),
+    });
   } catch (err) {
     btn.textContent = 'Failed';
     setStatus('Download failed: ' + (err?.message || err), 'error');
@@ -1130,7 +1192,11 @@ async function onDownloadZip() {
     const okIds = new Set(result.files.filter((f) => f.ok).map((f) => f.id));
     markDownloaded(items.filter((it) => okIds.has(it.id)));
     renderDownloadStats(aggregateDownload(result.files, result.elapsedMs), { elapsedMs: result.elapsedMs, skipped });
-    addHistory({ type: 'zip', added: result.added, failed: result.failed.length, size: formatBytes(result.totalBytes) });
+    addHistory({
+      type: 'zip', added: result.added, failed: result.failed.length,
+      size: formatBytes(result.totalBytes), skipped,
+      elapsed: formatDuration(result.elapsedMs),
+    });
     const failedNote = result.failed.length ? ` (${result.failed.length} failed)` : '';
     const skipNote = skipped ? ` · ${skipped} skipped` : '';
     setStatus(`ZIP ready: ${result.added} file(s)${failedNote}${skipNote}.`, 'ok');
@@ -1278,6 +1344,7 @@ function performClear() {
   if (sel.advanced) {
     advanced = loadAdvanced(); // storage cleared above → returns defaults
     applyAdvancedToUi();
+    reconcileHistory(); // history cap / display window reset to defaults
   }
   if (sel.downloaded) {
     downloaded = new Set();
@@ -1356,7 +1423,7 @@ function init() {
     $(id).addEventListener('change', saveOptions);
   }
   applyAdvancedToUi();
-  for (const id of ['adv-delay', 'adv-timeout', 'adv-maxfile', 'adv-maxzip', 'adv-skip', 'adv-count-discarded', 'adv-autosave-links']) {
+  for (const id of ['adv-delay', 'adv-timeout', 'adv-maxfile', 'adv-maxzip', 'adv-skip', 'adv-count-discarded', 'adv-autosave-links', 'adv-history-limit', 'adv-history-overwrite']) {
     $(id).addEventListener('change', readAdvancedFromUi);
   }
   const savedStats = loadSavedStats();
