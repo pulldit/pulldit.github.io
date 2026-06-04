@@ -125,6 +125,13 @@ input:focus, select:focus, button:focus-visible {
 .tag.warn { background: rgba(210, 153, 34, 0.18); color: var(--warn); }
 .inline-input { margin-top: 0.6rem; max-width: 420px; }
 
+/* Filters */
+.filters { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.9rem; padding-bottom: 0.9rem; border-bottom: 1px solid var(--border); }
+.filters-label { color: var(--text-dim); font-size: 0.82rem; font-weight: 600; }
+.chip { display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.3rem 0.6rem; border: 1px solid var(--border); border-radius: 999px; font-size: 0.85rem; cursor: pointer; user-select: none; background: var(--bg); }
+.chip:hover { border-color: var(--brand); }
+.chip input { accent-color: var(--brand); cursor: pointer; }
+
 /* Toolbar + results */
 .toolbar { display: flex; justify-content: space-between; gap: 0.8rem; flex-wrap: wrap; margin-bottom: 0.9rem; }
 .toolbar-left, .toolbar-right { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }

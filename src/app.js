@@ -6,11 +6,15 @@ import { parseInput, buildJsonUrl, normalizeListing } from './reddit.js';
 import { fetchJson } from './proxy.js';
 import { canZip, resolveProxy, ProxyMode } from './proxy.js';
 import { downloadSingle, downloadZip } from './download.js';
+import { applyFilters, normalizeFilters } from './filters.js';
 
 const $ = (id) => document.getElementById(id);
 const SETTINGS_KEY = 'rd.settings.v1';
+const FILTERS_KEY = 'rd.filters.v1';
 
-/** @type {Array<object>} */
+/** @type {Array<object>} full normalized set from the last fetch */
+let allItems = [];
+/** @type {Array<object>} the filtered view currently rendered */
 let currentItems = [];
 /** @type {Set<string>} */
 const selected = new Set();
@@ -43,6 +47,42 @@ function saveSettings(s) {
 }
 
 let settings = loadSettings();
+
+/* ----------------------------- filters ----------------------------- */
+
+function loadFilters() {
+  try {
+    return normalizeFilters(JSON.parse(localStorage.getItem(FILTERS_KEY) || '{}'));
+  } catch {
+    return normalizeFilters();
+  }
+}
+
+function saveFilters() {
+  try {
+    localStorage.setItem(FILTERS_KEY, JSON.stringify(filters));
+  } catch {
+    /* storage unavailable — non-fatal */
+  }
+}
+
+let filters = loadFilters();
+
+/** Recompute the rendered view from the full set + active filters. */
+function applyCurrentFilters() {
+  currentItems = applyFilters(allItems, filters);
+  renderGrid();
+}
+
+function onFilterChange() {
+  const next = {};
+  for (const cb of document.querySelectorAll('#filters input[data-filter]')) {
+    next[cb.dataset.filter] = cb.checked;
+  }
+  filters = normalizeFilters(next);
+  saveFilters();
+  applyCurrentFilters();
+}
 
 /** Reflect current settings into the proxy controls + ZIP availability. */
 function syncProxyUi() {
@@ -109,9 +149,9 @@ async function onSearch(event) {
   try {
     const json = await fetchJson(jsonUrl, settings);
     const { items } = normalizeListing(json);
-    currentItems = items;
+    allItems = items;
     selected.clear();
-    renderGrid();
+    applyCurrentFilters();
     if (items.length === 0) {
       setStatus('No downloadable media found in this listing.', '');
     } else {
@@ -145,7 +185,7 @@ function renderGrid() {
   const grid = $('grid');
   grid.replaceChildren();
   const section = $('results-section');
-  section.hidden = currentItems.length === 0;
+  section.hidden = allItems.length === 0;
 
   for (const item of currentItems) {
     grid.appendChild(renderCard(item));
@@ -248,8 +288,10 @@ function toggleSelect(id, on, li) {
 
 function updateCount() {
   const n = currentItems.length;
+  const total = allItems.length;
   const sel = selected.size;
-  $('count').textContent = `${n} item${n === 1 ? '' : 's'}${sel ? ` · ${sel} selected` : ''}`;
+  const shown = n < total ? `${n} of ${total}` : `${n}`;
+  $('count').textContent = `${shown} item${total === 1 ? '' : 's'}${sel ? ` · ${sel} selected` : ''}`;
 }
 
 function selectedItems() {
@@ -374,6 +416,10 @@ function init() {
   }
   $('worker-url').addEventListener('input', readProxyControls);
   $('public-proxy').addEventListener('change', readProxyControls);
+  for (const cb of document.querySelectorAll('#filters input[data-filter]')) {
+    cb.checked = filters[cb.dataset.filter] !== false;
+    cb.addEventListener('change', onFilterChange);
+  }
   syncProxyUi();
 }
 

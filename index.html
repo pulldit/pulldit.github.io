@@ -145,6 +145,15 @@
     </details>
 
     <section id="results-section" class="panel" hidden aria-live="polite">
+      <div class="filters" id="filters">
+        <span class="filters-label">Show types:</span>
+        <label class="chip"><input type="checkbox" data-filter="image" checked /> Images</label>
+        <label class="chip"><input type="checkbox" data-filter="gif" checked /> GIFs</label>
+        <label class="chip"><input type="checkbox" data-filter="video" checked /> Videos</label>
+        <span class="filters-label">Sources:</span>
+        <label class="chip"><input type="checkbox" data-filter="reddit" checked /> Reddit</label>
+        <label class="chip"><input type="checkbox" data-filter="imgur" checked /> imgur</label>
+      </div>
       <div class="toolbar">
         <div class="toolbar-left">
           <button id="select-all" type="button" class="btn ghost">Select all</button>
