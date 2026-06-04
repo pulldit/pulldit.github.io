@@ -1,5 +1,5 @@
 /**
- * RedditDownloader — secure media proxy (Cloudflare Worker).
+ * Pulldit — secure media proxy (Cloudflare Worker).
  *
  * Purpose: let the static site read media BYTES (which Reddit's CDNs serve without CORS)
  * so it can build ZIPs — WITHOUT trusting a random third-party proxy. You own this.
@@ -110,7 +110,7 @@ export default {
         redirect: 'follow',
         headers: {
           // A descriptive UA improves Reddit's tolerance; forward Range for video seeking.
-          'user-agent': 'RedditDownloader/1.0 (+https://redditdownloader.github.io)',
+          'user-agent': 'Pulldit/1.0 (+https://pulldit.github.io)',
           accept: request.headers.get('accept') || '*/*',
           ...(request.headers.get('range') ? { range: request.headers.get('range') } : {}),
         },

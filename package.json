@@ -5,7 +5,7 @@
   "type": "module",
   "private": true,
   "license": "MIT",
-  "homepage": "https://redditdownloader.github.io/",
+  "homepage": "https://pulldit.github.io/",
   "scripts": {
     "check": "node scripts/syntax-check.mjs",
     "test": "vitest run",

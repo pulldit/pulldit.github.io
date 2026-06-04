@@ -1,4 +1,4 @@
-# RedditDownloader — Rebuild TODO
+# Pulldit — Rebuild TODO
 
 Static, browser-only rebuild (GitHub-Pages-hostable, no backend you must run).
 Switchable proxy mode: (1) direct/no-proxy, (2) own Cloudflare Worker, (3) public proxy.

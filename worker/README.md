@@ -1,6 +1,6 @@
 # Your own secure ZIP proxy (Cloudflare Worker)
 
-This optional ~5-minute setup gives RedditDownloader a media proxy **you control**, so the
+This optional ~5-minute setup gives Pulldit a media proxy **you control**, so the
 bulk-ZIP feature works without trusting any third-party CORS proxy.
 
 The worker is **not an open proxy**: it only forwards requests to an allowlist of Reddit /

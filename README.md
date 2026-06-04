@@ -1,18 +1,18 @@
 <div align="center">
 
-<img src="assets/logo.svg" width="96" height="96" alt="RedditDownloader logo" />
+<img src="assets/logo.svg" width="96" height="96" alt="Pulldit logo" />
 
-# RedditDownloader
+# Pulldit
 
 **Download Reddit images, GIFs & videos — entirely in your browser.**
 No account. No tracking. No backend storing your data. Just a static page.
 
-[![CI](https://github.com/RedditDownloader/redditdownloader.github.io/actions/workflows/ci.yml/badge.svg)](https://github.com/RedditDownloader/redditdownloader.github.io/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/RedditDownloader/redditdownloader.github.io/actions/workflows/codeql.yml/badge.svg)](https://github.com/RedditDownloader/redditdownloader.github.io/actions/workflows/codeql.yml)
-[![Deploy](https://github.com/RedditDownloader/redditdownloader.github.io/actions/workflows/deploy.yml/badge.svg)](https://github.com/RedditDownloader/redditdownloader.github.io/actions/workflows/deploy.yml)
+[![CI](https://github.com/pulldit/pulldit.github.io/actions/workflows/ci.yml/badge.svg)](https://github.com/pulldit/pulldit.github.io/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/pulldit/pulldit.github.io/actions/workflows/codeql.yml/badge.svg)](https://github.com/pulldit/pulldit.github.io/actions/workflows/codeql.yml)
+[![Deploy](https://github.com/pulldit/pulldit.github.io/actions/workflows/deploy.yml/badge.svg)](https://github.com/pulldit/pulldit.github.io/actions/workflows/deploy.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-informational.svg)](LICENSE)
 
-[**▶ Open the app**](https://redditdownloader.github.io/)
+[**▶ Open the app**](https://pulldit.github.io/)
 
 </div>
 
@@ -20,7 +20,7 @@ No account. No tracking. No backend storing your data. Just a static page.
 
 ## What it is
 
-A complete, security-focused rewrite of the original RedditDownloader. It is a **100% static
+A complete, security-focused rewrite of the original Pulldit. It is a **100% static
 site** (HTML + CSS + vanilla ES modules) that you can host on GitHub Pages or open from any
 static web server. All work — fetching listings, previewing media, packaging ZIPs — happens
 in the visitor's browser.
@@ -130,9 +130,9 @@ original creators, and [Reddit's User Agreement](https://www.redditinc.com/polic
 Download only content you have the right to. Do not use this tool for harassment, unauthorized
 redistribution, or any unlawful purpose.
 
-**RedditDownloader is an independent project and is not affiliated with, endorsed by, or
+**Pulldit is an independent project and is not affiliated with, endorsed by, or
 sponsored by Reddit, Inc.** “Reddit” is a trademark of Reddit, Inc.
 
 ## License
 
-[MIT](LICENSE) © RedditDownloader contributors
+[MIT](LICENSE) © Pulldit contributors

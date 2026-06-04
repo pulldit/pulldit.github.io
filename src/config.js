@@ -3,11 +3,11 @@
 // auditable in one place. Pure data + a frozen export — no side effects.
 
 export const APP = Object.freeze({
-  name: 'RedditDownloader',
+  name: 'Pulldit',
   version: '1.0.0',
   tagline: 'Download Reddit images, GIFs & videos — right in your browser.',
-  repo: 'https://github.com/RedditDownloader/redditdownloader.github.io',
-  site: 'https://redditdownloader.github.io/',
+  repo: 'https://github.com/pulldit/pulldit.github.io',
+  site: 'https://pulldit.github.io/',
 });
 
 // Hosts we are willing to fetch the Reddit *listing JSON* from. The user's input is
