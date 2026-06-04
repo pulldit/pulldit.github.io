@@ -908,6 +908,42 @@ function performClear() {
   );
 }
 
+/* ----------------------------- extension install modal ----------------------------- */
+
+let extLastFocused = null;
+
+function openExtInstallModal() {
+  extLastFocused = document.activeElement;
+  $('ext-install-modal').hidden = false;
+  document.addEventListener('keydown', onExtModalKeydown);
+  $('ext-zip-link').focus();
+}
+
+function closeExtInstallModal() {
+  $('ext-install-modal').hidden = true;
+  document.removeEventListener('keydown', onExtModalKeydown);
+  if (extLastFocused && typeof extLastFocused.focus === 'function') extLastFocused.focus();
+}
+
+function onExtModalKeydown(e) {
+  if (e.key === 'Escape') {
+    closeExtInstallModal();
+    return;
+  }
+  if (e.key !== 'Tab') return;
+  const f = $('ext-install-modal').querySelectorAll('a[href], button');
+  if (!f.length) return;
+  const first = f[0];
+  const last = f[f.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
+}
+
 function init() {
   document.title = `${APP.name} — ${APP.tagline}`;
   $('search-form').addEventListener('submit', onSearch);
@@ -954,6 +990,11 @@ function init() {
   $('clear-all-opt').addEventListener('change', syncClearSelectAll);
   for (const el of document.querySelectorAll('#clear-modal [data-close]')) {
     el.addEventListener('click', closeClearModal);
+  }
+  const extInstallBtn = $('ext-install-btn');
+  if (extInstallBtn) extInstallBtn.addEventListener('click', openExtInstallModal);
+  for (const el of document.querySelectorAll('#ext-install-modal [data-ext-close]')) {
+    el.addEventListener('click', closeExtInstallModal);
   }
   syncProxyUi();
   initExtensionMode();

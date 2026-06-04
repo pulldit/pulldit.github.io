@@ -27,10 +27,13 @@ jobs:
       - run: npm ci
       - name: Build gate (must pass before publishing)
         run: npm run build
+      - name: Package the browser extension (downloadable from the site)
+        run: python3 scripts/pack-extension.py
       - name: Stage static files only (no node_modules)
         run: |
           mkdir -p _site
           cp -r index.html styles.css assets src vendor _site/
+          cp pulldit-bridge.zip _site/
           touch _site/.nojekyll
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

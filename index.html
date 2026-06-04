@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=6" />
+  <link rel="stylesheet" href="styles.css?v=7" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -169,9 +169,8 @@
       </fieldset>
 
       <p id="ext-install-hint" class="hint" hidden>
-        💡 For the most reliable, proxy-free ZIP — straight from your own IP — install the
-        <a href="https://github.com/pulldit/pulldit.github.io/tree/main/extension" target="_blank" rel="noopener noreferrer">Pulldit browser extension</a>.
-        The site detects it automatically and unlocks an “Extension” mode above.
+        💡 Most reliable, proxy-free ZIP — straight from your own IP.
+        <button type="button" id="ext-install-btn" class="linklike">Click here to install the Pulldit extension →</button>
       </p>
     </details>
 
@@ -302,9 +301,40 @@
     </div>
   </div>
 
+  <!-- Extension install modal -->
+  <div id="ext-install-modal" class="modal" hidden>
+    <div class="modal-backdrop" data-ext-close></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="ext-install-title">
+      <h2 id="ext-install-title">Install the Pulldit extension</h2>
+      <p class="modal-desc">
+        Unlocks proxy-free bulk ZIP fetched from <strong>your own IP</strong> — no third party,
+        and it keeps working when Reddit blocks datacenter proxies. Open-source and locked to
+        Reddit/imgur hosts.
+      </p>
+      <ol class="install-steps">
+        <li>
+          <a class="btn primary" id="ext-zip-link" href="pulldit-bridge.zip" download>Download extension (.zip)</a>
+          — then unzip it.
+        </li>
+        <li>Open <code>chrome://extensions</code> (or <code>edge://extensions</code>).</li>
+        <li>Turn on <strong>Developer mode</strong> (top-right toggle).</li>
+        <li>Click <strong>Load unpacked</strong> and select the unzipped <code>pulldit-bridge</code> folder.</li>
+        <li>Come back here — an <strong>“Extension”</strong> mode appears at the top of the proxy panel.</li>
+      </ol>
+      <p class="hint">
+        Firefox: open <code>about:debugging</code> → <strong>Load Temporary Add-on…</strong> →
+        pick <code>manifest.json</code>. Full guide &amp; source on
+        <a href="https://github.com/pulldit/pulldit.github.io/tree/main/extension" target="_blank" rel="noopener noreferrer">GitHub</a>.
+      </p>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-ext-close>Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=6"></script>
+  <script type="module" src="src/app.js?v=7"></script>
 </body>
 </html>
