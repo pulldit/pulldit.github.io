@@ -14,9 +14,9 @@ public release.
 - [ ] 0.5 Initial commit
 
 ## Phase 1 — Core safe modules (pure, testable, ES modules)
-- [ ] 1.1 `src/config.js` — host allowlists, proxy presets, size/count limits, app meta
-- [ ] 1.2 `src/url-guard.js` — parseHost, isAllowedMediaHost, validateMediaUrl, sanitizeFilename, extFromUrl
-- [ ] 1.3 `test/url-guard.test.js` — allowlist, rejects (private IPs, javascript:, data:, lookalikes), filenames
+- [x] 1.1 `src/config.js` — host allowlists, proxy presets, size/count limits, app meta
+- [x] 1.2 `src/url-guard.js` — parseHost, isAllowedMediaHost, validateMediaUrl, sanitizeFilename, extFromUrl
+- [x] 1.3 `test/url-guard.test.js` — allowlist, rejects (private IPs, javascript:, data:, lookalikes), filenames
 
 ## Phase 2 — Reddit logic
 - [ ] 2.1 `src/reddit.js` — parseInput (post/subreddit/user/url/shorthand), buildJsonUrl
