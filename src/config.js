@@ -4,7 +4,7 @@
 
 export const APP = Object.freeze({
   name: 'Pulldit',
-  version: '1.1.0',
+  version: '1.2.0',
   tagline: 'Download Reddit images, GIFs & videos — right in your browser.',
   repo: 'https://github.com/pulldit/pulldit.github.io',
   site: 'https://pulldit.github.io/',
