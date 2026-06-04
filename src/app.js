@@ -1,7 +1,7 @@
 // UI controller. Wires the DOM to the pure modules. All rendering uses createElement +
 // textContent (never innerHTML with data), matching the strict CSP. No inline handlers.
 
-import { APP, LIMITS, DEFAULT_PUBLIC_ID } from './config.js';
+import { APP, LIMITS, DEFAULT_PUBLIC_ID, EXTENSION } from './config.js';
 import { parseInput, buildJsonUrl, normalizeListing, singleMediaItem, aggregatePages } from './reddit.js';
 import { fetchJson, canZip, resolveProxy, getPublicProxy, ProxyMode } from './proxy.js';
 import { detectExtension } from './bridge-client.js';
@@ -1687,8 +1687,12 @@ function init() {
   for (const el of document.querySelectorAll('#clear-modal [data-close]')) {
     el.addEventListener('click', closeClearModal);
   }
+  const extLatest = $('ext-latest');
+  if (extLatest) extLatest.textContent = `v${EXTENSION.version}`;
   const extInstallBtn = $('ext-install-btn');
   if (extInstallBtn) extInstallBtn.addEventListener('click', openExtInstallModal);
+  const extUpdateBtn = $('ext-update-btn');
+  if (extUpdateBtn) extUpdateBtn.addEventListener('click', openExtInstallModal);
   for (const el of document.querySelectorAll('#ext-install-modal [data-ext-close]')) {
     el.addEventListener('click', closeExtInstallModal);
   }
@@ -1700,15 +1704,35 @@ function init() {
  * Detect the optional Pulldit Bridge extension and reveal the "Extension" mode when present.
  * If a saved setting selected extension mode but it is not installed, fall back to direct.
  */
+/** Compare dotted numeric versions: -1 if a<b, 0 if equal, 1 if a>b (missing parts = 0). */
+function cmpVersions(a, b) {
+  const pa = String(a || '').split('.').map((n) => parseInt(n, 10) || 0);
+  const pb = String(b || '').split('.').map((n) => parseInt(n, 10) || 0);
+  const len = Math.max(pa.length, pb.length);
+  for (let i = 0; i < len; i += 1) {
+    const d = (pa[i] || 0) - (pb[i] || 0);
+    if (d !== 0) return d < 0 ? -1 : 1;
+  }
+  return 0;
+}
+
 function initExtensionMode() {
   const option = $('ext-mode-option');
   const hint = $('ext-install-hint');
+  const updateHint = $('ext-update-hint');
   detectExtension().then(({ available, version }) => {
     if (available) {
       if (option) option.hidden = false;
       if (hint) hint.hidden = true;
       const verEl = $('ext-version');
       if (verEl) verEl.textContent = version ? `Detected ✓ v${version}` : 'Detected ✓';
+      // Surface an update notice when the installed extension is older than the latest release.
+      if (updateHint) {
+        const outdated = version && cmpVersions(version, EXTENSION.version) < 0;
+        const txt = $('ext-update-text');
+        if (txt) txt.textContent = `v${EXTENSION.version} is available (you have v${version}).`;
+        updateHint.hidden = !outdated;
+      }
       // The Extension radio lives inside the collapsible proxy panel — make it discoverable
       // by opening the panel and pointing the user there (until they actually adopt the mode).
       if (settings.mode !== ProxyMode.EXTENSION) {
@@ -1719,6 +1743,7 @@ function initExtensionMode() {
     } else {
       if (option) option.hidden = true;
       if (hint) hint.hidden = false;
+      if (updateHint) updateHint.hidden = true;
       if (settings.mode === ProxyMode.EXTENSION) {
         settings = { ...settings, mode: ProxyMode.DIRECT };
         saveSettings(settings);

@@ -194,6 +194,9 @@ input[type="radio"]:focus:not(:focus-visible) { outline: none; }
 .tag.safe { background: rgba(46, 160, 67, 0.18); color: var(--safe); }
 .tag.warn { background: rgba(210, 153, 34, 0.18); color: var(--warn); }
 .ext-ver { color: var(--safe); font-weight: 700; }
+.ext-update-hint { padding: 0.5rem 0.7rem; border: 1px solid var(--border); border-left: 3px solid var(--warn);
+  border-radius: var(--radius-sm); background: var(--bg-elev-2); color: var(--warn); }
+.ext-update-hint .linklike { color: var(--brand-2); }
 .inline-input { margin-top: 0.6rem; max-width: 420px; }
 
 /* Statistics */

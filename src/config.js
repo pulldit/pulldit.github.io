@@ -10,6 +10,16 @@ export const APP = Object.freeze({
   site: 'https://pulldit.github.io/',
 });
 
+// Optional Pulldit Bridge extension. `version` is the LATEST released extension version — the
+// page compares it against the version the installed extension reports and surfaces an "update
+// available" notice when the user's copy is older. The extension manifest is the source of truth;
+// bump this constant whenever a new extension build is released (npm run bump:ext bumps both).
+export const EXTENSION = Object.freeze({
+  version: '1.0.2',
+  url: 'https://github.com/pulldit/pulldit.github.io/tree/main/extension',
+  zip: 'pulldit-bridge.zip',
+});
+
 // Hosts we are willing to fetch the Reddit *listing JSON* from. The user's input is
 // normalized to one of these before any network call.
 export const REDDIT_HOSTS = Object.freeze([

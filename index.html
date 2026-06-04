@@ -30,7 +30,7 @@
 
   <link rel="icon" href="assets/logo.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="assets/logo.svg" />
-  <link rel="stylesheet" href="styles.css?v=35" />
+  <link rel="stylesheet" href="styles.css?v=36" />
 </head>
 <body>
   <a class="skip-link" href="#app">Skip to app</a>
@@ -192,6 +192,10 @@
       <p id="ext-install-hint" class="hint" hidden>
         💡 Most reliable, proxy-free ZIP — straight from your own IP.
         <button type="button" id="ext-install-btn" class="linklike">Click here to install the Pulldit extension →</button>
+      </p>
+      <p id="ext-update-hint" class="hint ext-update-hint" hidden>
+        ⬆ <strong>Extension update available</strong> — <span id="ext-update-text"></span>
+        <button type="button" id="ext-update-btn" class="linklike">Get the latest version →</button>
       </p>
     </details>
 
@@ -428,7 +432,7 @@
       <p class="modal-desc">
         Unlocks proxy-free bulk ZIP fetched from <strong>your own IP</strong> — no third party,
         and it keeps working when Reddit blocks datacenter proxies. Open-source and locked to
-        Reddit/imgur hosts.
+        Reddit/imgur hosts. Latest version: <strong id="ext-latest">v1.0.2</strong>.
       </p>
       <ol class="install-steps">
         <li>
@@ -454,6 +458,6 @@
   <!-- Vendored libraries (no CDN): classic scripts expose JSZip / saveAs globals. -->
   <script src="vendor/jszip.min.js"></script>
   <script src="vendor/FileSaver.min.js"></script>
-  <script type="module" src="src/app.js?v=35"></script>
+  <script type="module" src="src/app.js?v=36"></script>
 </body>
 </html>
