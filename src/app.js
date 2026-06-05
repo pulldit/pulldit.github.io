@@ -348,7 +348,7 @@ function fnSlug(s) {
   return String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
 }
 
-/** Meaningful ZIP base name from the last fetch, e.g. "pulldit-earthporn-top-week". */
+/** Meaningful ZIP base name from the last fetch, e.g. "pulldit-wallpapers-top-week". */
 function zipBaseName() {
   const f = lastFetch;
   let slug = 'media';

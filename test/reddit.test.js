@@ -73,7 +73,7 @@ describe('parseInput', () => {
     expect(r).toMatchObject({ ok: true, kind: 'subreddit', subreddit: 'pics', sort: 'top', time: 'week' });
   });
   it('parses shorthand r/sub, bare sub, u/name', () => {
-    expect(parseInput('r/EarthPorn')).toMatchObject({ ok: true, kind: 'subreddit', subreddit: 'EarthPorn' });
+    expect(parseInput('r/Wallpapers')).toMatchObject({ ok: true, kind: 'subreddit', subreddit: 'Wallpapers' });
     expect(parseInput('aww')).toMatchObject({ ok: true, kind: 'subreddit', subreddit: 'aww' });
     expect(parseInput('u/spez')).toMatchObject({ ok: true, kind: 'user', username: 'spez' });
     expect(parseInput('https://www.reddit.com/user/spez/')).toMatchObject({ ok: true, kind: 'user', username: 'spez' });
