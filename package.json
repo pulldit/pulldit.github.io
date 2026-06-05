@@ -1,17 +1,17 @@
 {
   "name": "redditdownloader",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "description": "Static, browser-only Reddit media downloader with switchable proxy modes (direct / own Cloudflare Worker / public proxy). No backend required.",
   "type": "module",
   "private": true,
   "license": "MIT",
   "homepage": "https://pulldit.github.io/",
   "scripts": {
-    "check": "node scripts/syntax-check.mjs",
+    "check": "node scripts/syntax-check.mjs && node scripts/sync-version.mjs --check",
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "npm run check && npm run test",
-    "bump:ext": "python scripts/bump-extension.py",
+    "sync:version": "node scripts/sync-version.mjs",
     "pack:ext": "python scripts/pack-extension.py",
     "serve": "http-server . -p 8080 -c-1 -s"
   },

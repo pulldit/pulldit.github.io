@@ -4,7 +4,7 @@
 
 export const APP = Object.freeze({
   name: 'Pulldit',
-  version: '1.3.0',
+  version: '1.4.0',
   tagline: 'Download Reddit images, GIFs & videos — right in your browser.',
   repo: 'https://github.com/pulldit/pulldit.github.io',
   site: 'https://pulldit.github.io/',
@@ -12,10 +12,10 @@ export const APP = Object.freeze({
 
 // Optional Pulldit Bridge extension. `version` is the LATEST released extension version — the
 // page compares it against the version the installed extension reports and surfaces an "update
-// available" notice when the user's copy is older. The extension manifest is the source of truth;
-// bump this constant whenever a new extension build is released (npm run bump:ext bumps both).
+// available" notice when the user's copy is older. The app and the extension share one version:
+// package.json is the single source, propagated here by `npm run sync:version`. Do not hand-edit.
 export const EXTENSION = Object.freeze({
-  version: '1.0.2',
+  version: '1.4.0',
   url: 'https://github.com/pulldit/pulldit.github.io/tree/main/extension',
   zip: 'pulldit-bridge.zip',
 });

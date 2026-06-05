@@ -167,10 +167,10 @@ test/                   # vitest suites
 
 ```bash
 npm test          # run the vitest suites
-npm run check     # syntax-check every shipped JS file
+npm run check     # syntax-check every shipped JS file + verify version sync
 npm run build     # check + test (the CI gate)
 npm run pack:ext  # package extension/ into pulldit-bridge.zip
-npm run bump:ext  # bump the extension's patch version (manifest = single source of truth)
+node scripts/sync-version.mjs 1.4.0  # set version (package.json = single source) + propagate everywhere
 ```
 
 ## Disclaimer & responsible use

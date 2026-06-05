@@ -16,7 +16,8 @@
  *     like the user's own tab — but only ever to the first-party target host, never to us.
  */
 
-// Single source of truth: the version comes from manifest.json (bump it with `npm run bump:ext`).
+// At runtime the version comes from manifest.json; manifest.json is kept in sync with the
+// repo-wide version (package.json) by `npm run sync:version` at release time.
 const VERSION = chrome.runtime.getManifest().version;
 
 // Hosts we will fetch the listing JSON from.
