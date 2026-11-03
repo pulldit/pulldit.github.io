@@ -23,7 +23,10 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Audit production-relevant dependencies
-        run: npm audit --audit-level=high
+        # Pulldit ships zero npm packages (static site; deploy copies only index.html/src/assets/vendor).
+        # devDependencies (http-server, vitest) never reach users -> keep them out of the scheduled gate.
+        # Dev-tool updates are handled by Dependabot; new risky deps on PRs by dependency-review below.
+        run: npm audit --omit=dev --audit-level=high
 
   dependency-review:
     name: Dependency review (PRs)
